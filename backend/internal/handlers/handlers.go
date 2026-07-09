@@ -186,10 +186,11 @@ func DownloadDocument(c echo.Context) error {
 }
 
 type ActionRequest struct {
-	ActorID  uuid.UUID  `json:"actor_id"`
-	TargetID *uuid.UUID `json:"target_id"` // Used if sending back or routing elsewhere
-	Action   string     `json:"action"` // Approve, Reject, Sent Back
-	Remarks  string     `json:"remarks"`
+	ActorID   uuid.UUID  `json:"actor_id"`
+	TargetID  *uuid.UUID `json:"target_id"` // Used if sending back or routing elsewhere
+	Action    string     `json:"action"` // Approve, Reject, Sent Back
+	Remarks   string     `json:"remarks"`
+	Signature string     `json:"signature"`
 }
 
 func DocumentAction(c echo.Context) error {
@@ -248,6 +249,7 @@ func DocumentAction(c echo.Context) error {
 		TargetID:   &nextOwnerID,
 		Action:     wfAction,
 		Remarks:    req.Remarks,
+		Signature:  req.Signature,
 	}
 	db.DB.Create(&history)
 
