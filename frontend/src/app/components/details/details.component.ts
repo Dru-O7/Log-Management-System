@@ -27,6 +27,7 @@ export class DetailsComponent implements OnInit {
   replaceRemarks: string = '';
 
   showSignModal: boolean = false;
+  pdfCacheBuster: number = Date.now();
   pendingAction: string = '';
   signMode: 'draw' | 'type' = 'draw';
   typedName: string = '';
@@ -68,6 +69,7 @@ export class DetailsComponent implements OnInit {
     this.api.getDocumentDetails(id).subscribe(res => {
       this.document = res.document;
       this.history = res.history;
+      this.pdfCacheBuster = Date.now();
     });
   }
 
@@ -223,7 +225,7 @@ export class DetailsComponent implements OnInit {
   getPdfUrl(): SafeResourceUrl {
     if (!this.document) return '';
     const token = this.auth.getToken();
-    const url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}`;
+    const url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 

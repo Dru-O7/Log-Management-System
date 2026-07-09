@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +17,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/pdfcpu/pdfcpu/pkg/api"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -243,6 +248,12 @@ func DocumentAction(c echo.Context) error {
 	doc.CurrentOwnerID = nextOwnerID
 	db.DB.Save(&doc)
 
+	if req.Signature != "" {
+		if err := stampSignatureOnPDF(doc.FilePath, req.Signature); err != nil {
+			log.Printf("Error overlaying e-signature on PDF file: %v", err)
+		}
+	}
+
 	history := models.WorkflowHistory{
 		DocumentID: doc.ID,
 		ActorID:    req.ActorID,
@@ -408,4 +419,56 @@ func Login(c echo.Context) error {
 		"token": tokenString,
 		"user":  user,
 	})
+}
+
+func stampSignatureOnPDF(pdfPath string, base64Signature string) error {
+	if base64Signature == "" {
+		return nil
+	}
+	if !strings.HasSuffix(strings.ToLower(pdfPath), ".pdf") {
+		return nil // Skip if not a PDF
+	}
+	// 1. Strip base64 prefix
+	parts := strings.Split(base64Signature, ",")
+	base64Data := parts[len(parts)-1]
+
+	// 2. Decode base64 bytes
+	dec, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return err
+	}
+
+	// 3. Write temporary PNG file
+	tempDir := os.TempDir()
+	tempPNG := filepath.Join(tempDir, fmt.Sprintf("sig_temp_%d.png", time.Now().UnixNano()))
+	err = os.WriteFile(tempPNG, dec, 0644)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tempPNG)
+
+	// 4. Create a temporary output PDF file
+	tempOutPDF := pdfPath + ".signed"
+
+	// 5. Create watermark config
+	// scale:0.25 (fits nicely), pos:br (bottom right), off:-20 20 (margins)
+	wm, err := pdfcpu.ParseImageWatermarkDetails(tempPNG, "scale:0.25, pos:br, off:-20 20", true, types.POINTS)
+	if err != nil {
+		return err
+	}
+
+	// 6. Apply watermark/stamp to file
+	err = api.AddWatermarksFile(pdfPath, tempOutPDF, nil, wm, nil)
+	if err != nil {
+		return err
+	}
+
+	// 7. Overwrite the original PDF file with the signed one
+	err = os.Rename(tempOutPDF, pdfPath)
+	if err != nil {
+		os.Remove(tempOutPDF)
+		return err
+	}
+
+	return nil
 }
