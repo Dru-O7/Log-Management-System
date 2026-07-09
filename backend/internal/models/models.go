@@ -49,6 +49,7 @@ const (
 	ActionRejected     WorkflowAction = "Rejected"
 	ActionSentBack     WorkflowAction = "Sent Back"
 	ActionFileReplaced WorkflowAction = "File Replaced"
+	ActionResubmitted  WorkflowAction = "Resubmitted"
 )
 
 type WorkflowHistory struct {

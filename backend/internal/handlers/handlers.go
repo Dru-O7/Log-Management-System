@@ -221,6 +221,7 @@ func ReplaceDocument(c echo.Context) error {
 
 	uploaderIDStr := c.FormValue("uploader_id")
 	targetOwnerIDStr := c.FormValue("target_owner_id")
+	remarks := c.FormValue("remarks")
 
 	uploaderID, err := uuid.Parse(uploaderIDStr)
 	if err != nil {
@@ -238,52 +239,80 @@ func ReplaceDocument(c echo.Context) error {
 	}
 
 	if doc.Status != models.StatusSentBack {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Document must be 'Sent Back' to be replaced"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Document must be 'Sent Back' to be replaced or resubmitted"})
 	}
 
 	if doc.UploaderID != uploaderID {
-		return c.JSON(http.StatusForbidden, map[string]string{"error": "Only the uploader can replace this document"})
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Only the uploader can replace or resubmit this document"})
 	}
 
 	file, err := c.FormFile("file")
+	fileReplaced := true
+
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "File is required"})
+		if err == http.ErrMissingFile || err == http.ErrNotMultipart {
+			fileReplaced = false
+		} else {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to retrieve file"})
+		}
 	}
 
-	src, err := file.Open()
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to read file"})
+	if fileReplaced {
+		src, err := file.Open()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to read file"})
+		}
+		defer src.Close()
+
+		uploadDir := "./uploads"
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create upload directory"})
+		}
+
+		filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+		filePath := filepath.Join(uploadDir, filename)
+
+		dst, err := os.Create(filePath)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save file"})
+		}
+		defer dst.Close()
+
+		if _, err = io.Copy(dst, src); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save file content"})
+		}
+
+		doc.Filename = file.Filename
+		doc.FilePath = filePath
 	}
-	defer src.Close()
 
-	uploadDir := "./uploads"
-	filename := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
-	filePath := filepath.Join(uploadDir, filename)
-
-	dst, err := os.Create(filePath)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save file"})
-	}
-	defer dst.Close()
-
-	if _, err = io.Copy(dst, src); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save file content"})
-	}
-
-	// Update Document
-	doc.Filename = file.Filename
-	doc.FilePath = filePath
+	// Update Document Status and Owner
 	doc.Status = models.StatusPendingApproval
 	doc.CurrentOwnerID = targetOwnerID
 	db.DB.Save(&doc)
+
+	// Determine action and remarks
+	var wfAction models.WorkflowAction
+	historyRemarks := remarks
+	if fileReplaced {
+		wfAction = models.ActionFileReplaced
+		if historyRemarks == "" {
+			historyRemarks = "File Replaced and Resubmitted"
+		}
+	} else {
+		wfAction = models.ActionResubmitted
+		if historyRemarks == "" {
+			historyRemarks = "Document Resubmitted"
+		}
+	}
 
 	// Create Workflow History
 	history := models.WorkflowHistory{
 		DocumentID: doc.ID,
 		ActorID:    uploaderID,
 		TargetID:   &targetOwnerID,
-		Action:     models.ActionFileReplaced,
-		Remarks:    "File Replaced and Resubmitted",
+		Action:     wfAction,
+		Remarks:    historyRemarks,
 	}
 	db.DB.Create(&history)
 
