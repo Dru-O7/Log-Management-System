@@ -50,11 +50,15 @@ export class DetailsComponent implements OnInit {
       return;
     }
 
-    this.api.getUsers().subscribe(res => {
-      this.users = res.filter(u => u.ID !== this.currentUser.ID);
-      if (this.users.length > 0) {
-        this.selectedUser = this.users[0].ID;
-      }
+    this.api.getUsers().subscribe({
+      next: (res) => {
+        const currentId = this.currentUser?.ID || this.currentUser?.id;
+        this.users = res.filter(u => (u.id || u.ID) !== currentId);
+        if (this.users.length > 0) {
+          this.selectedUser = this.users[0].id || this.users[0].ID;
+        }
+      },
+      error: (err) => console.error('Failed to load users:', err)
     });
 
     this.route.paramMap.subscribe(params => {

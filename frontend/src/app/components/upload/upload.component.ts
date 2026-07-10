@@ -28,10 +28,17 @@ export class UploadComponent implements OnInit {
     if (!this.auth.getCurrentUser()) {
       this.router.navigate(['/login']);
     }
-    this.api.getUsers().subscribe(res => {
-      this.users = res.filter(u => u.ID !== this.auth.getCurrentUser()?.ID);
-      if (this.users.length > 0) {
-        this.targetOwnerId = this.users[0].ID;
+    this.api.getUsers().subscribe({
+      next: (res) => {
+        const currentId = this.auth.getCurrentUser()?.ID || this.auth.getCurrentUser()?.id;
+        this.users = res.filter(u => (u.id || u.ID) !== currentId);
+        if (this.users.length > 0) {
+          this.targetOwnerId = this.users[0].id || this.users[0].ID;
+        }
+      },
+      error: (err) => {
+        console.error('Failed to load users:', err);
+        this.error = 'Could not load approvers list. Please refresh.';
       }
     });
   }
@@ -56,9 +63,10 @@ export class UploadComponent implements OnInit {
       return;
     }
 
+    const currentUser = this.auth.getCurrentUser();
     const formData = new FormData();
     formData.append('file', this.selectedFile);
-    formData.append('uploader_id', this.auth.getCurrentUser().ID);
+    formData.append('uploader_id', currentUser.ID || currentUser.id);
     formData.append('target_owner_id', this.targetOwnerId);
     formData.append('title', this.title);
     formData.append('description', this.description);
