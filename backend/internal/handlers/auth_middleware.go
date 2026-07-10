@@ -2,13 +2,22 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
-var JWTSecretKey = []byte("my-office-secret-key-12345")
+var JWTSecretKey []byte
+
+func init() {
+	key := os.Getenv("JWT_SECRET")
+	if key == "" {
+		key = "my-office-secret-key-12345"
+	}
+	JWTSecretKey = []byte(key)
+}
 
 type JWTCustomClaims struct {
 	UserID string `json:"user_id"`

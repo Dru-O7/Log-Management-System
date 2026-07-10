@@ -442,6 +442,80 @@ func Login(c echo.Context) error {
 	})
 }
 
+// SignupRequest structure
+type SignupRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// Signup handler
+func Signup(c echo.Context) error {
+	var req SignupRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	// Input validation
+	req.Name = strings.TrimSpace(req.Name)
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	if req.Name == "" || req.Email == "" || len(req.Password) < 8 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Name, email, and password (minimum 8 characters) are required"})
+	}
+
+	// Simple email regex validation
+	if !strings.Contains(req.Email, "@") || !strings.Contains(req.Email, ".") {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid email address format"})
+	}
+
+	// Check if user already exists
+	var existingUser models.User
+	if err := db.DB.First(&existingUser, "email = ?", req.Email).Error; err == nil {
+		return c.JSON(http.StatusConflict, map[string]string{"error": "User with this email already exists"})
+	}
+
+	// Hash password
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to encrypt password"})
+	}
+
+	newUser := models.User{
+		ID:           uuid.New(),
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: string(hash),
+	}
+
+	if err := db.DB.Create(&newUser).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
+	}
+
+	// Create JWT custom claims
+	claims := &JWTCustomClaims{
+		UserID: newUser.ID.String(),
+		Email:  newUser.Email,
+		Name:   newUser.Name,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(JWTSecretKey)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to generate authentication token"})
+	}
+
+	newUser.PasswordHash = ""
+
+	return c.JSON(http.StatusCreated, map[string]interface{}{
+		"token": tokenString,
+		"user":  newUser,
+	})
+}
+
+
 func stampSignatureOnPDF(pdfPath string, base64Signature string, existingSigCount int) error {
 	if base64Signature == "" {
 		return nil
