@@ -81,10 +81,10 @@ type Document struct {
 	Status          DocumentStatus `gorm:"size:50;not null"`
 	Title           string         `gorm:"size:255"`
 	Description     string         `gorm:"type:text"`
-	UniqueNumber    string         `gorm:"size:100;uniqueIndex"`
+	UniqueNumber    string         `gorm:"size:100;uniqueIndex:idx_unique_number_version"`
 	Tags            string         `gorm:"size:255"`
 	Category        string         `gorm:"size:100"`
-	Version         int            `gorm:"not null;default:1"`
+	Version         int            `gorm:"not null;default:1;uniqueIndex:idx_unique_number_version"`
 	ParentDocID     *uuid.UUID     `gorm:"type:uuid"` // Linked to previous version
 	CurrentStage    int            `gorm:"not null;default:1"`
 	SlaDeadline     *time.Time
