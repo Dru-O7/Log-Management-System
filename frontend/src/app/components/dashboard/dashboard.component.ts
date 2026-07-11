@@ -14,8 +14,11 @@ import { AuthService } from '../../services/auth.service';
 })
 export class DashboardComponent implements OnInit {
   documents: any[] = [];
+  filteredDocuments: any[] = [];
   currentUser: any = null;
   searchText: string = '';
+  documentTypes: any[] = [];
+  selectedFolder: string = 'All';
 
   constructor(private api: ApiService, private auth: AuthService, private router: Router) {}
 
@@ -25,19 +28,53 @@ export class DashboardComponent implements OnInit {
       this.router.navigate(['/login']);
       return;
     }
+    this.loadDocumentTypes();
     this.loadDocuments();
+  }
+
+  loadDocumentTypes() {
+    this.api.getDocumentTypes().subscribe({
+      next: (types) => {
+        this.documentTypes = types;
+      }
+    });
   }
 
   loadDocuments() {
     this.api.getDocuments(this.currentUser.ID, this.searchText).subscribe({
       next: (docs) => {
         this.documents = docs;
+        this.applyFilter();
       }
     });
   }
 
   onSearchChange() {
     this.loadDocuments();
+  }
+
+  selectFolder(folderName: string) {
+    this.selectedFolder = folderName;
+    this.applyFilter();
+  }
+
+  applyFilter() {
+    if (this.selectedFolder === 'All') {
+      this.filteredDocuments = this.documents;
+    } else {
+      this.filteredDocuments = this.documents.filter(doc => 
+        doc.Category?.toLowerCase() === this.selectedFolder.toLowerCase()
+      );
+    }
+  }
+
+  getFolderCount(folderName: string): number {
+    if (folderName === 'All') {
+      return this.documents.length;
+    }
+    return this.documents.filter(doc => 
+      doc.Category?.toLowerCase() === folderName.toLowerCase()
+    ).length;
   }
 
   goToUpload() {

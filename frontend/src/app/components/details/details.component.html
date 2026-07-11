@@ -1,81 +1,81 @@
 <div class="mt-4 max-w-7xl mx-auto px-4" *ngIf="document">
-  <button class="text-slate-600 hover:text-slate-900 border border-slate-300 hover:bg-slate-50 font-medium rounded-xl text-sm px-5 py-2.5 transition-all duration-300 mb-6 cursor-pointer" (click)="router.navigate(['/dashboard'])">&larr; Back to Dashboard</button>
+  <button class="app-btn-secondary mb-6 cursor-pointer" (click)="router.navigate(['/dashboard'])">&larr; Back to Dashboard</button>
   
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
     <!-- Main Content: Document Metadata and Actions -->
     <div class="lg:col-span-2 space-y-6">
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+      <div class="app-card relative overflow-hidden">
         <div class="flex justify-between items-start mb-6 gap-4">
           <div>
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">{{ document.UniqueNumber }}</span>
-              <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md uppercase">{{ document.Category }}</span>
+            <div class="flex items-center gap-2.5 mb-2 flex-wrap">
+              <span class="text-[10px] font-bold text-[var(--primary)] bg-indigo-50 border border-indigo-100/30 px-2.5 py-1 rounded">{{ document.UniqueNumber }}</span>
+              <span class="text-[9px] font-bold text-[var(--text-secondary)] bg-slate-100 border border-slate-200 px-2.5 py-1 rounded uppercase">{{ document.Category }}</span>
             </div>
-            <h2 class="text-2xl font-bold text-slate-800">{{ document.Title }}</h2>
-            <p class="text-xs text-slate-400 mt-1">File: {{ document.Filename }}</p>
+            <h2 class="text-2xl font-bold text-[var(--text-primary)] mt-1.5">{{ document.Title }}</h2>
+            <p class="text-xs text-[var(--text-muted)] mt-1">File: {{ document.Filename }}</p>
           </div>
-          <span class="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border flex-shrink-0" [ngClass]="{
-            'bg-amber-500/10 text-amber-600 border-amber-500/20': document.Status === 'Pending Approval' || document.Status === 'Draft' || document.Status === 'Sent Back',
-            'bg-emerald-500/10 text-emerald-600 border-emerald-500/20': document.Status === 'Approved',
-            'bg-rose-500/10 text-rose-600 border-rose-500/20': document.Status === 'Rejected'
+          <span class="px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex-shrink-0" [ngClass]="{
+            'bg-amber-50 text-amber-700 border-amber-200': document.Status === 'Pending Approval' || document.Status === 'Draft' || document.Status === 'Sent Back',
+            'bg-emerald-50 text-emerald-700 border-emerald-200': document.Status === 'Approved',
+            'bg-rose-50 text-rose-700 border-rose-200': document.Status === 'Rejected'
           }">{{ document.Status }}</span>
         </div>
 
-        <div *ngIf="document.Description" class="mb-6 p-4 bg-slate-50 border border-slate-200/65 rounded-xl">
-          <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Description</h4>
-          <p class="text-sm text-slate-700 leading-relaxed">{{ document.Description }}</p>
+        <div *ngIf="document.Description" class="mb-6 p-4 bg-slate-50 border border-[var(--border)] rounded-[var(--radius-md)]">
+          <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">Description</h4>
+          <p class="text-sm text-[var(--text-secondary)] leading-relaxed">{{ document.Description }}</p>
         </div>
         
-        <div class="flex flex-wrap gap-x-8 gap-y-2 mb-6 text-sm text-slate-500">
-          <p>Submitted by: <strong class="text-slate-800 font-semibold">{{ document.Uploader.Name }}</strong></p>
-          <p>Pending with: <strong class="text-slate-800 font-semibold">{{ document.CurrentOwner.Name }}</strong></p>
-          <p *ngIf="document.Tags" class="flex gap-1 items-center">
+        <div class="flex flex-wrap gap-x-8 gap-y-2 mb-6 text-sm text-[var(--text-secondary)]">
+          <p>Submitted by: <strong class="text-[var(--text-primary)] font-semibold">{{ document.Uploader.Name }}</strong></p>
+          <p>Pending with: <strong class="text-[var(--text-primary)] font-semibold">{{ document.CurrentOwner.Name }}</strong></p>
+          <p *ngIf="document.Tags" class="flex gap-1.5 items-center">
             Tags: 
-            <span *ngFor="let tag of document.Tags.split(',')" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded border border-slate-200">#{{ tag.trim() }}</span>
+            <span *ngFor="let tag of document.Tags.split(',')" class="bg-slate-150/60 text-[var(--text-secondary)] text-xs px-2.5 py-0.5 rounded border border-slate-200">#{{ tag.trim() }}</span>
           </p>
         </div>
 
-        <button class="text-slate-600 hover:text-slate-900 border border-slate-300 hover:bg-slate-50 font-semibold rounded-xl text-sm px-5 py-2.5 transition-all duration-300 cursor-pointer w-full sm:w-auto" (click)="download()">Download Document</button>
+        <button class="app-btn-secondary w-full sm:w-auto font-semibold" (click)="download()">Download Document</button>
 
         <!-- Actions panel if current user is owner -->
         <div *ngIf="document.CurrentOwnerID === currentUser.ID && document.Status !== 'Approved' && document.Status !== 'Rejected' && document.Status !== 'Sent Back'">
-          <hr class="border-slate-200 my-6">
-          <h3 class="text-lg font-bold text-slate-800">Action Required</h3>
+          <hr class="border-[var(--border)] my-6">
+          <h3 class="text-lg font-bold text-[var(--text-primary)]">Action Required</h3>
           
           <div class="mt-4 mb-5">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Remarks</label>
-            <textarea class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300" rows="3" [(ngModel)]="actionRemarks" placeholder="Add your comments here..."></textarea>
+            <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Remarks</label>
+            <textarea class="app-input" rows="3" [(ngModel)]="actionRemarks" placeholder="Add your comments here..."></textarea>
           </div>
 
           <div class="mb-5">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Forward to (Teacher / Principal)</label>
-            <select class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300 cursor-pointer" [(ngModel)]="selectedUser">
+            <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Forward to (Teacher / Principal)</label>
+            <select class="app-input cursor-pointer" [(ngModel)]="selectedUser">
               <option *ngFor="let user of users" [value]="user.id || user.ID" class="bg-white text-slate-800">{{ user.name || user.Name }}</option>
             </select>
           </div>
           
-          <div class="flex flex-wrap gap-4">
-            <button class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-5 rounded-xl transition-all duration-300 shadow-sm cursor-pointer flex-1 sm:flex-initial" (click)="submitAction('Approved')">Approve</button>
-            <button class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-5 rounded-xl transition-all duration-300 shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 cursor-pointer flex-1 sm:flex-initial" (click)="submitAction('Forwarded')">Forward</button>
-            <button class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-5 rounded-xl transition-all duration-300 shadow-sm cursor-pointer flex-1 sm:flex-initial" (click)="submitAction('Sent Back')">Send Back for Revision</button>
-            <button class="bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-5 rounded-xl transition-all duration-300 shadow-sm cursor-pointer flex-1 sm:flex-initial" (click)="submitAction('Rejected')">Reject Final</button>
+          <div class="flex flex-wrap gap-3">
+            <button class="app-btn-primary bg-[var(--accent)] hover:bg-[var(--accent-hover)] border-0 flex-1 sm:flex-initial cursor-pointer" (click)="submitAction('Approved')">Approve</button>
+            <button class="app-btn-primary flex-1 sm:flex-initial cursor-pointer" (click)="submitAction('Forwarded')">Forward</button>
+            <button class="app-btn-primary bg-[var(--warning)] hover:bg-amber-600 border-0 flex-1 sm:flex-initial cursor-pointer" (click)="submitAction('Sent Back')">Send Back for Revision</button>
+            <button class="app-btn-primary bg-[var(--danger)] hover:bg-rose-600 border-0 flex-1 sm:flex-initial cursor-pointer" (click)="submitAction('Rejected')">Reject Final</button>
           </div>
         </div>
 
         <!-- Replace / Resubmit File Panel if Sent Back -->
         <div *ngIf="document.Status === 'Sent Back' && document.UploaderID === currentUser.ID">
-          <hr class="border-slate-200 my-6">
-          <h3 class="text-lg font-bold text-slate-800">Resubmit or Replace File</h3>
-          <p class="text-slate-500 text-sm mb-5">This document was sent back. You can upload a revised version (optional) and resubmit it with remarks.</p>
+          <hr class="border-[var(--border)] my-6">
+          <h3 class="text-lg font-bold text-[var(--text-primary)]">Resubmit or Replace File</h3>
+          <p class="text-[var(--text-secondary)] text-sm mb-5">This document was sent back. You can upload a revised version (optional) and resubmit it with remarks.</p>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div>
-              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Document Title</label>
-              <input type="text" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300" [(ngModel)]="document.Title" placeholder="Document title...">
+              <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Document Title</label>
+              <input type="text" class="app-input" [(ngModel)]="document.Title" placeholder="Document title...">
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Category</label>
-              <select class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300 cursor-pointer" [(ngModel)]="document.Category">
+              <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Category</label>
+              <select class="app-input cursor-pointer" [(ngModel)]="document.Category">
                 <option value="Assignment" class="bg-white text-slate-800">Assignment</option>
                 <option value="Notice" class="bg-white text-slate-800">Notice</option>
                 <option value="Report" class="bg-white text-slate-800">Report</option>
@@ -87,50 +87,50 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
             <div>
-              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Description</label>
-              <textarea class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300" rows="1" [(ngModel)]="document.Description" placeholder="Description..."></textarea>
+              <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Description</label>
+              <textarea class="app-input" rows="1" [(ngModel)]="document.Description" placeholder="Description..."></textarea>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tags (Comma-separated)</label>
-              <input type="text" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300" [(ngModel)]="document.Tags" placeholder="e.g. class-10, term-2, urgent">
+              <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Tags (Comma-separated)</label>
+              <input type="text" class="app-input" [(ngModel)]="document.Tags" placeholder="e.g. class-10, term-2, urgent">
             </div>
           </div>
 
           <div class="mb-5">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Upload Revised Document (Optional)</label>
-            <input type="file" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600/10 file:text-blue-600 hover:file:bg-blue-600/20 file:cursor-pointer" (change)="onFileSelected($event)">
+            <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Upload Revised Document (Optional)</label>
+            <input type="file" class="app-input file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-[var(--primary)] file:cursor-pointer" (change)="onFileSelected($event)">
           </div>
 
           <div class="mb-5">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Remarks / Comments</label>
-            <textarea class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300" rows="2" [(ngModel)]="replaceRemarks" placeholder="Add comments explaining changes or addressing feedback..."></textarea>
+            <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Remarks / Comments</label>
+            <textarea class="app-input" rows="2" [(ngModel)]="replaceRemarks" placeholder="Add comments explaining changes or addressing feedback..."></textarea>
           </div>
 
           <div class="mb-6">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Re-submit To (Teacher / Principal)</label>
-            <select class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300 cursor-pointer" [(ngModel)]="selectedUser">
+            <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Re-submit To (Teacher / Principal)</label>
+            <select class="app-input cursor-pointer" [(ngModel)]="selectedUser">
               <option *ngFor="let user of users" [value]="user.id || user.ID" class="bg-white text-slate-800">{{ user.name || user.Name }}</option>
             </select>
           </div>
 
-          <div *ngIf="replaceError" class="text-rose-600 mb-5 text-sm p-3 bg-rose border border-rose-100 rounded-xl">{{ replaceError }}</div>
+          <div *ngIf="replaceError" class="text-rose-600 mb-5 text-sm p-3 bg-rose-50 border border-rose-100 rounded-xl">{{ replaceError }}</div>
 
-          <button class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-5 rounded-xl transition-all duration-300 shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 cursor-pointer w-full sm:w-auto" (click)="replaceFile()">Resubmit Document</button>
+          <button class="app-btn-primary w-full sm:w-auto cursor-pointer" (click)="replaceFile()">Resubmit Document</button>
         </div>
       </div>
 
       <!-- PDF Preview Card -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm" *ngIf="isPdf(document.Filename)">
-        <h3 class="text-lg font-bold text-slate-800 mb-4">Document Preview</h3>
-        <div class="w-full h-[600px] rounded-xl overflow-hidden bg-slate-50 border border-slate-200">
+      <div class="app-card" *ngIf="isPdf(document.Filename)">
+        <h3 class="text-lg font-bold text-[var(--text-primary)] mb-4">Document Preview</h3>
+        <div class="w-full h-[600px] rounded-xl overflow-hidden bg-slate-50 border border-[var(--border)]">
           <iframe [src]="getPdfUrl()" width="100%" height="100%" class="border-0"></iframe>
         </div>
       </div>
 
       <!-- DOCX Preview Card -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm" *ngIf="isDocx(document.Filename)">
-        <h3 class="text-lg font-bold text-slate-800 mb-4">Document Preview</h3>
-        <div class="w-full h-[600px] rounded-xl overflow-y-auto bg-slate-50 border border-slate-200 p-4" id="docx-container">
+      <div class="app-card" *ngIf="isDocx(document.Filename)">
+        <h3 class="text-lg font-bold text-[var(--text-primary)] mb-4">Document Preview</h3>
+        <div class="w-full h-[600px] rounded-xl overflow-y-auto bg-slate-50 border border-[var(--border)] p-4" id="docx-container">
           <!-- DOCX content will be rendered here dynamically -->
         </div>
       </div>
@@ -138,34 +138,34 @@
 
     <!-- Sidebar: Workflow History -->
     <div class="lg:col-span-1">
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h3 class="text-lg font-bold text-slate-800 mb-6">Workflow History</h3>
+      <div class="app-card">
+        <h3 class="text-lg font-bold text-[var(--text-primary)] mb-6">Workflow History</h3>
         
-        <div class="relative pl-6 border-l border-slate-200 space-y-6">
+        <div class="relative pl-6 border-l border-[var(--border)] space-y-6">
           <div class="relative" *ngFor="let item of history">
             <!-- Timeline indicator dot -->
             <div class="absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full border-[3px] border-white shadow-sm" [ngClass]="{
-              'bg-rose-500': item.Action === 'Rejected',
-              'bg-emerald-500': item.Action === 'Approved',
-              'bg-amber-500': item.Action === 'Sent Back',
-              'bg-blue-500': item.Action !== 'Rejected' && item.Action !== 'Approved' && item.Action !== 'Sent Back'
+              'bg-[var(--danger)]': item.Action === 'Rejected',
+              'bg-[var(--accent)]': item.Action === 'Approved',
+              'bg-[var(--warning)]': item.Action === 'Sent Back',
+              'bg-[var(--primary)]': item.Action !== 'Rejected' && item.Action !== 'Approved' && item.Action !== 'Sent Back'
             }"></div>
             
-            <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl shadow-xs">
-              <div class="font-bold text-slate-800 text-sm mb-1">{{ item.Action }}</div>
-              <div class="text-xs text-slate-500 mb-2">
-                By <strong class="text-slate-700 font-medium">{{ item.Actor.Name }}</strong>
-                <span *ngIf="item.Target"> &rarr; To <strong class="text-slate-700 font-medium">{{ item.Target.Name }}</strong></span>
+            <div class="bg-slate-50 border border-[var(--border)] p-4 rounded-[var(--radius-md)] shadow-sm">
+              <div class="font-bold text-[var(--text-primary)] text-sm mb-1">{{ item.Action }}</div>
+              <div class="text-xs text-[var(--text-secondary)] mb-2">
+                By <strong class="text-[var(--text-primary)] font-medium">{{ item.Actor.Name }}</strong>
+                <span *ngIf="item.Target"> &rarr; To <strong class="text-[var(--text-primary)] font-medium">{{ item.Target.Name }}</strong></span>
               </div>
-              <div class="text-[10px] text-slate-400 mb-2">
+              <div class="text-[10px] text-[var(--text-muted)] mb-2">
                 {{ item.CreatedAt | date:'short' }}
               </div>
-              <div *ngIf="item.Remarks" class="text-xs text-slate-600 italic border-t border-slate-200 pt-2 mt-2 leading-relaxed">
+              <div *ngIf="item.Remarks" class="text-xs text-[var(--text-secondary)] italic border-t border-[var(--border)] pt-2 mt-2 leading-relaxed">
                 "{{ item.Remarks }}"
               </div>
-              <div *ngIf="item.Signature" class="mt-3 border-t border-slate-200 pt-3">
-                <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">E-Signature:</span>
-                <img [src]="getSafeSignature(item.Signature)" class="h-10 border border-slate-200 rounded p-1 bg-white block" alt="Signature">
+              <div *ngIf="item.Signature" class="mt-3 border-t border-[var(--border)] pt-3">
+                <span class="block text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">E-Signature:</span>
+                <img [src]="getSafeSignature(item.Signature)" class="h-10 border border-[var(--border)] rounded p-1 bg-white block" alt="Signature">
               </div>
             </div>
           </div>
@@ -176,35 +176,35 @@
 </div>
 
 <!-- E-Signature Modal Dialog -->
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs" *ngIf="showSignModal">
-  <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-[500px] shadow-2xl p-6 relative overflow-hidden transition-all duration-300 transform scale-100">
-    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" *ngIf="showSignModal">
+  <div class="bg-white border border-[var(--border)] rounded-[var(--radius-lg)] w-full max-w-[500px] shadow-2xl p-6 relative overflow-hidden transition-all duration-350">
+    <div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--primary)] to-indigo-650"></div>
     
-    <h3 class="text-xl font-bold text-slate-800 mb-2">Provide E-Signature</h3>
-    <p class="text-xs text-slate-500 mb-5 uppercase tracking-wide font-semibold">Action: {{ pendingAction }}</p>
+    <h3 class="text-xl font-bold text-[var(--text-primary)] mb-2">Provide E-Signature</h3>
+    <p class="text-xs text-[var(--text-secondary)] mb-5 uppercase tracking-wide font-semibold">Action: {{ pendingAction }}</p>
     
     <!-- Toggle between drawing and typing -->
-    <div class="flex border-b border-slate-200 mb-5">
-      <button class="flex-1 py-2 text-center text-sm font-medium border-b-2 cursor-pointer transition-all" [ngClass]="{'border-blue-600 text-blue-600': signMode === 'draw', 'border-transparent text-slate-400 hover:text-slate-600': signMode !== 'draw'}" (click)="setSignMode('draw')">Draw Signature</button>
-      <button class="flex-1 py-2 text-center text-sm font-medium border-b-2 cursor-pointer transition-all" [ngClass]="{'border-blue-600 text-blue-600': signMode === 'type', 'border-transparent text-slate-400 hover:text-slate-600': signMode !== 'type'}" (click)="setSignMode('type')">Type Signature</button>
+    <div class="flex border-b border-[var(--border)] mb-5">
+      <button class="flex-1 py-2 text-center text-sm font-medium border-b-2 cursor-pointer transition-all" [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': signMode === 'draw', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': signMode !== 'draw'}" (click)="setSignMode('draw')">Draw Signature</button>
+      <button class="flex-1 py-2 text-center text-sm font-medium border-b-2 cursor-pointer transition-all" [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': signMode === 'type', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': signMode !== 'type'}" (click)="setSignMode('type')">Type Signature</button>
     </div>
     
     <!-- Canvas container -->
-    <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden mb-5">
+    <div class="bg-slate-50 border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden mb-5">
       <canvas id="sig-canvas" class="w-full block bg-white cursor-crosshair touch-none" (mousedown)="startDrawing($event)" (mousemove)="draw($event)" (mouseup)="stopDrawing()" (mouseleave)="stopDrawing()" (touchstart)="startDrawing($event)" (touchmove)="draw($event)" (touchend)="stopDrawing()"></canvas>
     </div>
     
     <!-- Typing Input (Only if Type mode selected) -->
     <div class="mb-5" *ngIf="signMode === 'type'">
-      <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Type your name</label>
-      <input type="text" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-300" [(ngModel)]="typedName" (ngModelChange)="drawTypedSignature()" placeholder="Type signature name...">
+      <label class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Type your name</label>
+      <input type="text" class="app-input" [(ngModel)]="typedName" (ngModelChange)="drawTypedSignature()" placeholder="Type signature name...">
     </div>
     
     <!-- Action buttons -->
     <div class="flex gap-3 justify-end">
-      <button class="text-slate-600 hover:text-slate-850 border border-slate-300 hover:bg-slate-50 font-medium py-2 px-4 rounded-xl text-sm transition-all duration-300 cursor-pointer" (click)="clearCanvas()">Clear</button>
-      <button class="text-slate-600 hover:text-slate-850 border border-slate-300 hover:bg-slate-50 font-medium py-2 px-4 rounded-xl text-sm transition-all duration-300 cursor-pointer" (click)="showSignModal = false">Cancel</button>
-      <button class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-5 rounded-xl text-sm transition-all duration-300 shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 cursor-pointer" (click)="confirmSignature()">Sign & Submit</button>
+      <button class="app-btn-secondary cursor-pointer py-2 px-4" (click)="clearCanvas()">Clear</button>
+      <button class="app-btn-secondary cursor-pointer py-2 px-4" (click)="showSignModal = false">Cancel</button>
+      <button class="app-btn-primary cursor-pointer py-2 px-5" (click)="confirmSignature()">Sign & Submit</button>
     </div>
   </div>
 </div>
