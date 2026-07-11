@@ -3,7 +3,9 @@ package document
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -523,17 +525,17 @@ func (s *service) TakeAction(docID, authenticatedUserID uuid.UUID, req ActionReq
 		doc.AssignedAt = time.Now()
 	}
 
-	// Draw or type digital signature stamping
-	if req.Signature != "" {
+	var token string
+	if wfAction != models.ActionSentBack && wfAction != "Sent Back" {
+		hash := sha256.New()
+		hash.Write([]byte(fmt.Sprintf("%s-%s-%s-%d", doc.ID, authenticatedUserID, wfAction, time.Now().UnixNano())))
+		token = strings.ToUpper(hex.EncodeToString(hash.Sum(nil))[:12])
+
 		existingSigs, _ := s.repo.CountSignatures(doc.ID)
 		filePathLower := strings.ToLower(doc.FilePath)
 		if strings.HasSuffix(filePathLower, ".pdf") {
-			if err := stampSignatureOnPDF(doc.FilePath, req.Signature, existingSigs); err != nil {
-				log.Printf("Error overlaying signature on PDF: %v", err)
-			}
-		} else if strings.HasSuffix(filePathLower, ".docx") {
-			if err := stampSignatureOnDocx(doc.FilePath, req.Signature, existingSigs); err != nil {
-				log.Printf("Error overlaying signature on DOCX: %v", err)
+			if err := stampTextSignatureOnPDF(doc.FilePath, actorUser.Name, token, existingSigs); err != nil {
+				log.Printf("Error overlaying text signature on PDF: %v", err)
 			}
 		}
 	}
@@ -571,7 +573,7 @@ func (s *service) TakeAction(docID, authenticatedUserID uuid.UUID, req ActionReq
 		TargetID:   req.TargetID,
 		Action:     wfAction,
 		Remarks:    req.Remarks,
-		Signature:  req.Signature,
+		Signature:  token,
 		ActorRole:  actorUser.Role,
 		Stage:      doc.CurrentStage,
 		Version:    doc.Version,
@@ -1056,33 +1058,19 @@ func (s *service) GetReports(schoolID uuid.UUID) (interface{}, error) {
 	}, nil
 }
 
-func stampSignatureOnPDF(pdfPath string, base64Signature string, existingSigCount int) error {
-	if base64Signature == "" {
-		return nil
-	}
+func stampTextSignatureOnPDF(pdfPath string, actorName string, token string, existingSigCount int) error {
 	if !strings.HasSuffix(strings.ToLower(pdfPath), ".pdf") {
 		return nil
 	}
-	parts := strings.Split(base64Signature, ",")
-	base64Data := parts[len(parts)-1]
 
-	dec, err := base64.StdEncoding.DecodeString(base64Data)
-	if err != nil {
-		return err
-	}
-
-	tempDir := os.TempDir()
-	tempPNG := filepath.Join(tempDir, fmt.Sprintf("sig_temp_%d.png", time.Now().UnixNano()))
-	err = os.WriteFile(tempPNG, dec, 0644)
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tempPNG)
+	dateStr := time.Now().Format("02-Jan-06 15:04")
+	text := fmt.Sprintf("VERIFIED BY: %s | KEY: %s | %s", strings.ToUpper(actorName), token, dateStr)
 
 	tempOutPDF := pdfPath + ".signed"
-	offsetX := -20 - (existingSigCount * 110)
-	desc := fmt.Sprintf("scale:0.25, pos:br, off:%d 20", offsetX)
-	wm, err := pdfcpu.ParseImageWatermarkDetails(tempPNG, desc, true, types.POINTS)
+	offsetY := 20 + (existingSigCount * 12)
+	desc := fmt.Sprintf("font:Helvetica, points:7, col:0.1 0.3 0.6, pos:br, off:-20 %d", offsetY)
+
+	wm, err := pdfcpu.ParseTextWatermarkDetails(text, desc, true, types.POINTS)
 	if err != nil {
 		return err
 	}
