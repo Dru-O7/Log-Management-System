@@ -115,6 +115,8 @@ export class DashboardComponent implements OnInit {
       list = list.filter(doc => (doc.UploaderID || '').toLowerCase() === currentUserIdLower && (doc.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
     } else if (this.activeTab === 'overdue') {
       list = list.filter(doc => (doc.Status === 'Pending Approval' || doc.Status === 'Sent Back') && doc.SlaDeadline && new Date(doc.SlaDeadline) < now);
+    } else if (this.activeTab === 'approved') {
+      list = list.filter(doc => doc.Status === 'Approved' && ((doc.UploaderID || '').toLowerCase() === currentUserIdLower || (doc.CurrentOwnerID || '').toLowerCase() === currentUserIdLower));
     } else if (this.activeTab === 'archived_closed') {
       list = list.filter(doc => doc.Status === 'Closed' || doc.Status === 'Archived');
     }
@@ -141,6 +143,8 @@ export class DashboardComponent implements OnInit {
       list = list.filter(doc => (doc.UploaderID || '').toLowerCase() === currentUserIdLower && (doc.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
     } else if (tab === 'overdue') {
       list = list.filter(doc => (doc.Status === 'Pending Approval' || doc.Status === 'Sent Back') && doc.SlaDeadline && new Date(doc.SlaDeadline) < now);
+    } else if (tab === 'approved') {
+      list = list.filter(doc => doc.Status === 'Approved' && ((doc.UploaderID || '').toLowerCase() === currentUserIdLower || (doc.CurrentOwnerID || '').toLowerCase() === currentUserIdLower));
     } else if (tab === 'archived_closed') {
       list = list.filter(doc => doc.Status === 'Closed' || doc.Status === 'Archived');
     }
