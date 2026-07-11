@@ -87,6 +87,13 @@ export DATABASE_URL="host=localhost user=your_user password=your_password dbname
      ```
    The gateway will be available at `http://localhost:8080`.
 
+### Database Seeding / Reset
+If you need to reset and populate the database with the pre-seeded mock accounts, navigate to the `backend` folder and run the seeding command:
+```bash
+go run cmd/seed/main.go
+```
+This will clear the users database and seed the mock credentials.
+
 ### Running Tests
 To run backend unit tests:
 ```bash
