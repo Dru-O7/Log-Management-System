@@ -28,6 +28,7 @@ export class DetailsComponent implements OnInit {
   replaceRemarks: string = '';
 
   pdfCacheBuster: number = Date.now();
+  safePdfUrl: SafeResourceUrl | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -75,6 +76,11 @@ export class DetailsComponent implements OnInit {
       this.document = res.document;
       this.history = res.history;
       this.pdfCacheBuster = Date.now();
+      
+      const token = this.auth.getToken();
+      const url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
+      this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+
       this.draftContent = res.document.DraftSpace || '';
       
       if (this.isDocx(this.document.Filename)) {
@@ -170,10 +176,7 @@ export class DetailsComponent implements OnInit {
   }
 
   getPdfUrl(): SafeResourceUrl {
-    if (!this.document) return '';
-    const token = this.auth.getToken();
-    const url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    return this.safePdfUrl || '';
   }
 
   getSafeSignature(signature: string): any {
