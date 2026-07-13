@@ -5,6 +5,7 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { UploadComponent } from './components/upload/upload.component';
 import { DetailsComponent } from './components/details/details.component';
 import { AdminComponent } from './components/admin/admin.component';
+import { HistoryComponent } from './components/history/history.component';
 import { NotFoundComponent } from './components/not-found/not-found.component';
 import { authGuard } from './auth.guard';
 import { guestGuard } from './guest.guard';
@@ -16,6 +17,7 @@ export const routes: Routes = [
   { path: 'register',   component: RegisterComponent,  canActivate: [guestGuard] },
   { path: 'dashboard',  component: DashboardComponent, canActivate: [authGuard] },
   { path: 'upload',     component: UploadComponent,    canActivate: [authGuard] },
+  { path: 'history',    component: HistoryComponent,   canActivate: [authGuard] },
   { path: 'details/:id',component: DetailsComponent,   canActivate: [authGuard] },
   // Admin route
   { path: 'admin',      component: AdminComponent,     canActivate: [authGuard, adminGuard] },

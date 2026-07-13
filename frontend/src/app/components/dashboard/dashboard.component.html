@@ -18,87 +18,97 @@
       </div>
       <div>
         <button class="app-btn-primary flex items-center gap-2 cursor-pointer border-0 shadow-lg shadow-indigo-650/20" (click)="goToUpload()">
-          <span class="text-base font-bold">+</span> Submit New Document
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+          Submit New Document
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Statistical Overview Widgets (Matching screenshot cards) -->
+  <!-- Statistical Overview Widgets -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
     <!-- Assignments Widget -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between">
+    <div class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between">
       <div class="flex items-center gap-4">
-        <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold text-lg border border-blue-100">
-          📝
+        <div class="w-12 h-12 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-blue-100 dark:border-blue-900/30">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
         </div>
         <div>
-          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Assignments</span>
-          <span class="text-2xl font-extrabold text-slate-800 leading-tight block mt-0.5">{{ getCategoryDocCount('Assignment') }}</span>
+          <span class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block">Assignments</span>
+          <span class="text-2xl font-extrabold text-[var(--text-primary)] leading-tight block mt-0.5">{{ getCategoryDocCount('Assignment') }}</span>
         </div>
       </div>
-      <div class="text-right border-l border-slate-100 pl-4">
-        <span class="text-[10px] font-bold text-emerald-600 block">SLA: 72 Hours</span>
-        <span class="text-[9px] font-semibold text-slate-400 mt-0.5 block">Approved: {{ getCategoryApprovedCount('Assignment') }}</span>
+      <div class="text-right border-l border-[var(--border)] pl-4">
+        <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 block">SLA: 72 Hours</span>
+        <span class="text-[9px] font-semibold text-[var(--text-muted)] mt-0.5 block">Approved: {{ getCategoryApprovedCount('Assignment') }}</span>
       </div>
     </div>
 
     <!-- Leaves Widget -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between">
+    <div class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between">
       <div class="flex items-center gap-4">
-        <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center font-bold text-lg border border-emerald-100">
-          📅
+        <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-450 rounded-xl flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
         </div>
         <div>
-          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Leave Requests</span>
-          <span class="text-2xl font-extrabold text-slate-800 leading-tight block mt-0.5">{{ getCategoryDocCount('Leave Application') }}</span>
+          <span class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block">Leave Requests</span>
+          <span class="text-2xl font-extrabold text-[var(--text-primary)] leading-tight block mt-0.5">{{ getCategoryDocCount('Leave Application') }}</span>
         </div>
       </div>
-      <div class="text-right border-l border-slate-100 pl-4">
-        <span class="text-[10px] font-bold text-emerald-600 block">SLA: 48 Hours</span>
-        <span class="text-[9px] font-semibold text-slate-400 mt-0.5 block">Approved: {{ getCategoryApprovedCount('Leave Application') }}</span>
+      <div class="text-right border-l border-[var(--border)] pl-4">
+        <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 block">SLA: 48 Hours</span>
+        <span class="text-[9px] font-semibold text-[var(--text-muted)] mt-0.5 block">Approved: {{ getCategoryApprovedCount('Leave Application') }}</span>
       </div>
     </div>
 
     <!-- Other Requests Widget -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between">
+    <div class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-xs hover:shadow-sm transition-all duration-200 flex items-center justify-between">
       <div class="flex items-center gap-4">
-        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold text-lg border border-indigo-100">
-          💼
+        <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 rounded-xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
         </div>
         <div>
-          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Other Slips & Forms</span>
-          <span class="text-2xl font-extrabold text-slate-800 leading-tight block mt-0.5">{{ getOtherDocsCount() }}</span>
+          <span class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block">Other Slips & Forms</span>
+          <span class="text-2xl font-extrabold text-[var(--text-primary)] leading-tight block mt-0.5">{{ getOtherDocsCount() }}</span>
         </div>
       </div>
-      <div class="text-right border-l border-slate-100 pl-4">
-        <span class="text-[10px] font-bold text-amber-500 block">Multiple Types</span>
-        <span class="text-[9px] font-semibold text-slate-400 mt-0.5 block">Approved: {{ getOtherApprovedCount() }}</span>
+      <div class="text-right border-l border-[var(--border)] pl-4">
+        <span class="text-[10px] font-bold text-amber-500 dark:text-amber-400 block">Multiple Types</span>
+        <span class="text-[9px] font-semibold text-[var(--text-muted)] mt-0.5 block">Approved: {{ getOtherApprovedCount() }}</span>
       </div>
     </div>
   </div>
 
   <!-- Quick Launch Module Grid -->
   <div class="mb-8" *ngIf="documentTypes && documentTypes.length > 0">
-    <h3 class="text-xs font-bold text-slate-450 uppercase tracking-wider mb-4">Quick Launch Modules</h3>
+    <h3 class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4">Quick Launch Modules</h3>
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
       <div *ngFor="let dt of documentTypes" 
-           class="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between shadow-xs hover:shadow-sm hover:border-blue-450 transition-all duration-200 cursor-pointer"
+           class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between shadow-xs hover:shadow-sm hover:border-blue-450 transition-all duration-200 cursor-pointer"
            [class.ring-2]="selectedFolder === dt.Name"
            [class.ring-blue-500]="selectedFolder === dt.Name"
            (click)="selectFolder(dt.Name)">
         <div>
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-4 shadow-xs border" [ngClass]="getLauncherColorClass(dt.Name)">
-            {{ getCategoryIcon(dt.Name) }}
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-4 shadow-xs border" [ngClass]="getLauncherColorClass(dt.Name)">
+            <ng-container [ngSwitch]="dt.Name.toLowerCase()">
+              <svg *ngSwitchCase="'assignment'" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <svg *ngSwitchCase="'leave application'" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+              <svg *ngSwitchCase="'report'" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+              <svg *ngSwitchCase="'permission slip'" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3M19 4l3 3"/></svg>
+              <svg *ngSwitchCase="'transfer certificate request'" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <svg *ngSwitchCase="'general request letter'" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <svg *ngSwitchCase="'fee concession form'" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <svg *ngSwitchDefault class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+            </ng-container>
           </div>
-          <div class="font-bold text-xs text-slate-800 tracking-tight mb-1 truncate">{{ dt.Name }}</div>
-          <div class="text-[10px] text-slate-400 leading-relaxed line-clamp-2">
+          <div class="font-bold text-xs text-[var(--text-primary)] tracking-tight mb-1 truncate">{{ dt.Name }}</div>
+          <div class="text-[10px] text-[var(--text-muted)] leading-relaxed line-clamp-2">
             Manage {{ dt.Name.toLowerCase() }} forms, file attachments, and active signatures.
           </div>
         </div>
-        <div class="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
-          <span class="text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">SLA: {{ dt.SlaHours }}h</span>
-          <button class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] rounded-lg cursor-pointer flex items-center gap-1 border-0 transition-all hover:translate-x-0.5"
+        <div class="mt-4 pt-4 border-t border-[var(--border)]/40 flex items-center justify-between">
+          <span class="text-[9px] font-bold text-[var(--text-muted)] bg-[var(--background)] border border-[var(--border)] px-1.5 py-0.5 rounded">SLA: {{ dt.SlaHours }}h</span>
+          <button class="px-2.5 py-1 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white font-bold text-[10px] rounded-lg cursor-pointer flex items-center gap-1 border-0 transition-all hover:translate-x-0.5"
                   (click)="$event.stopPropagation(); launchNewDoc(dt.Name)">
             Launch <span class="text-xs">&rsaquo;</span>
           </button>
@@ -108,211 +118,142 @@
   </div>
 
   <!-- Priority Filter Bar -->
-  <div class="flex flex-wrap gap-2 mb-6 justify-between items-center bg-white p-3 border border-[var(--border)] rounded-[var(--radius-md)] shadow-sm">
+  <div class="flex flex-wrap gap-2 mb-6 justify-between items-center bg-[var(--surface)] p-3 border border-[var(--border)] rounded-xl shadow-sm">
     <div class="flex items-center gap-1.5 flex-wrap">
       <span class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mr-2">Priority:</span>
-      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border"
-              [ngClass]="{'bg-[var(--primary)] text-white border-[var(--primary)]': selectedPriority === 'All', 'bg-slate-50 text-[var(--text-secondary)] border-slate-200 hover:bg-slate-100': selectedPriority !== 'All'}"
+      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border bg-transparent"
+              [ngClass]="{'bg-[var(--primary)]! text-white border-[var(--primary)]': selectedPriority === 'All', 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--background)]': selectedPriority !== 'All'}"
               (click)="selectPriority('All')">All</button>
-      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border"
-              [ngClass]="{'bg-slate-800 text-white border-slate-800': selectedPriority === 'Normal', 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100': selectedPriority !== 'Normal'}"
+      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border bg-transparent"
+              [ngClass]="{'bg-slate-800! dark:bg-slate-700! text-white border-slate-800 dark:border-slate-700': selectedPriority === 'Normal', 'text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--background)]': selectedPriority !== 'Normal'}"
               (click)="selectPriority('Normal')">Normal</button>
-      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border"
-              [ngClass]="{'bg-rose-600 text-white border-rose-600': selectedPriority === 'Urgent', 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100/50': selectedPriority !== 'Urgent'}"
+      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border bg-transparent"
+              [ngClass]="{'bg-rose-600! text-white border-rose-600': selectedPriority === 'Urgent', 'text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-900/30 hover:bg-[var(--background)]': selectedPriority !== 'Urgent'}"
               (click)="selectPriority('Urgent')">Urgent</button>
-      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border"
-              [ngClass]="{'bg-amber-600 text-white border-amber-600': selectedPriority === 'Confidential', 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100/50': selectedPriority !== 'Confidential'}"
+      <button class="px-3.5 py-1 text-xs rounded-md cursor-pointer font-semibold transition-all border bg-transparent"
+              [ngClass]="{'bg-amber-600! text-white border-amber-600': selectedPriority === 'Confidential', 'text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30 hover:bg-[var(--background)]': selectedPriority !== 'Confidential'}"
               (click)="selectPriority('Confidential')">Confidential</button>
     </div>
 
-    <!-- Navigation Tab Buttons -->
-    <div class="flex border-b border-slate-100 gap-1 mt-2 sm:mt-0">
+    <!-- Navigation Tab Buttons (History Removed) -->
+    <div class="flex border-b border-[var(--border)]/10 gap-1 mt-2 sm:mt-0">
       <!-- Common All Files Tab -->
-      <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer"
+      <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0"
               [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': activeTab === 'all_files', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': activeTab !== 'all_files'}"
               (click)="selectTab('all_files')">All ({{ getTabCount('all_files') }})</button>
+      
       <!-- Admin Specific Tabs -->
       <ng-container *ngIf="currentUser.Role === 'Admin'">
-        <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer"
+        <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0"
                 [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': activeTab === 'pending_me', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': activeTab !== 'pending_me'}"
                 (click)="selectTab('pending_me')">Pending Review ({{ getTabCount('pending_me') }})</button>
       </ng-container>
       
       <!-- Non-Admin Tabs -->
       <ng-container *ngIf="currentUser.Role !== 'Admin'">
-        <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer"
+        <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0"
                 [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': activeTab === 'pending_me', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': activeTab !== 'pending_me'}"
                 (click)="selectTab('pending_me')">Pending with me ({{ getTabCount('pending_me') }})</button>
-        <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer"
+        <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0"
                 [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': activeTab === 'sent_out', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': activeTab !== 'sent_out'}"
                 (click)="selectTab('sent_out')">Sent out ({{ getTabCount('sent_out') }})</button>
       </ng-container>
 
-      <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer"
+      <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0"
               [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': activeTab === 'overdue', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': activeTab !== 'overdue'}"
               (click)="selectTab('overdue')">Overdue ({{ getTabCount('overdue') }})</button>
-      <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer"
+      <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0"
               [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': activeTab === 'approved', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': activeTab !== 'approved'}"
               (click)="selectTab('approved')">Approved ({{ getTabCount('approved') }})</button>
-      <button class="px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer"
-              [ngClass]="{'border-[var(--primary)] text-[var(--primary)]': activeTab === 'archived_closed', 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': activeTab !== 'archived_closed'}"
-              (click)="selectTab('archived_closed')">History</button>
     </div>
   </div>
 
   <div class="app-card">
     <div class="flex justify-between items-center mb-6">
       <h3 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-        <span *ngIf="activeTab !== 'archived_closed'">Submissions &rsaquo; {{ selectedFolder }} &rsaquo; {{ activeTab }}</span>
-        <span *ngIf="activeTab === 'archived_closed'">Activity Log &rsaquo; Full Audit History</span>
+        <span>Submissions &rsaquo; {{ selectedFolder }} &rsaquo; {{ activeTab }}</span>
       </h3>
-      <span class="text-[10px] font-bold text-[var(--text-muted)] bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
-        <span *ngIf="activeTab !== 'archived_closed'">{{ filteredDocuments.length }} items</span>
-        <span *ngIf="activeTab === 'archived_closed'">{{ filteredHistoryEntries.length }} events</span>
+      <span class="text-[10px] font-bold text-[var(--text-muted)] bg-[var(--background)] border border-[var(--border)] px-2.5 py-0.5 rounded-full">
+        <span>{{ filteredDocuments.length }} items</span>
       </span>
     </div>
     
     <!-- ── STANDARD DOCUMENT LIST ── -->
-    <ng-container *ngIf="activeTab !== 'archived_closed'">
-      <!-- Loading State -->
-      <div *ngIf="loading" class="py-16 text-center">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[var(--primary)] border-t-transparent mb-4"></div>
-        <p class="text-sm font-semibold text-[var(--text-secondary)]">Loading documents from SchoolSync...</p>
-      </div>
+    <!-- Loading State -->
+    <div *ngIf="loading" class="py-16 text-center">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[var(--primary)] border-t-transparent mb-4"></div>
+      <p class="text-sm font-semibold text-[var(--text-secondary)]">Loading documents...</p>
+    </div>
 
-      <!-- Empty State -->
-      <div *ngIf="!loading && filteredDocuments.length === 0" class="text-center py-12 text-[var(--text-muted)]">
-        No documents found matching these filters.
-      </div>
+    <!-- Empty State -->
+    <div *ngIf="!loading && filteredDocuments.length === 0" class="text-center py-12 text-[var(--text-muted)]">
+      No documents found matching these filters.
+    </div>
 
-      <!-- Active List -->
-      <div class="space-y-3.5" *ngIf="!loading && filteredDocuments.length > 0">
-        <div *ngFor="let doc of filteredDocuments" class="p-4 bg-slate-50 hover:bg-slate-100 border border-[var(--border)] rounded-[var(--radius-md)] flex justify-between items-center transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md" (click)="goToDetails(doc.ID)">
-          <div class="flex-1 min-w-0 pr-4">
-            <div class="flex items-center gap-2.5 mb-1.5 flex-wrap">
-              <span class="text-[10px] font-bold text-[var(--primary)] bg-indigo-50 border border-indigo-100/30 px-2.5 py-0.5 rounded">{{ doc.UniqueNumber }}</span>
-              <span class="text-[9px] font-bold text-[var(--text-secondary)] bg-slate-200/50 border border-slate-300/20 px-2 py-0.5 rounded uppercase">{{ doc.Category }}</span>
-              
-              <!-- Priority Badge -->
-              <span class="text-[9px] font-bold px-2 py-0.5 rounded border uppercase" [ngClass]="{
-                'bg-slate-100 text-slate-800 border-slate-200': doc.Priority === 'Normal',
-                'bg-rose-50 text-rose-700 border-rose-150': doc.Priority === 'Urgent',
-                'bg-amber-50 text-amber-700 border-amber-150': doc.Priority === 'Confidential'
-              }">{{ doc.Priority || 'Normal' }}</span>
+    <!-- Active List -->
+    <div class="space-y-3.5" *ngIf="!loading && filteredDocuments.length > 0">
+      <div *ngFor="let doc of filteredDocuments" class="p-4 bg-[var(--background)]/30 hover:bg-[var(--background)]/75 border border-[var(--border)] rounded-xl flex justify-between items-center transition-all duration-200 cursor-pointer shadow-xs hover:shadow-sm" (click)="goToDetails(doc.ID)">
+        <div class="flex-1 min-w-0 pr-4">
+          <div class="flex items-center gap-2.5 mb-1.5 flex-wrap">
+            <span class="text-[10px] font-bold text-[var(--primary)] bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/30 px-2.5 py-0.5 rounded">{{ doc.UniqueNumber }}</span>
+            <span class="text-[9px] font-bold text-[var(--text-secondary)] bg-slate-200/50 dark:bg-slate-800 border border-slate-350/20 px-2 py-0.5 rounded uppercase">{{ doc.Category }}</span>
+            
+            <!-- Priority Badge -->
+            <span class="text-[9px] font-bold px-2 py-0.5 rounded border uppercase" [ngClass]="{
+              'bg-slate-100 dark:bg-slate-850 text-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700': doc.Priority === 'Normal',
+              'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-455 border-rose-150 dark:border-rose-900/30': doc.Priority === 'Urgent',
+              'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-455 border-amber-150 dark:border-amber-900/30': doc.Priority === 'Confidential'
+            }">{{ doc.Priority || 'Normal' }}</span>
 
-              <div class="font-bold text-[var(--text-primary)] text-base truncate">{{ doc.Title }}</div>
-            </div>
-            <div class="text-sm text-[var(--text-secondary)] mb-2 truncate" *ngIf="doc.Description">
-              {{ doc.Description }}
-            </div>
-            <div class="text-xs text-[var(--text-muted)] flex flex-wrap gap-x-4 gap-y-1 items-center">
-              <span>Submitted by: <strong class="text-[var(--text-secondary)] font-medium">{{ doc.Uploader?.Name }}</strong></span>
-              <span>Pending with: <strong class="text-[var(--text-secondary)] font-medium">{{ doc.CurrentOwner?.Name }}</strong></span>
-              <span>Holding: <strong class="text-indigo-600 font-semibold">{{ getHoldingDuration(doc.AssignedAt) }}</strong></span>
-              <span>Date: {{ doc.CreatedAt | date:'short' }}</span>
-            </div>
+            <div class="font-bold text-[var(--text-primary)] text-base truncate">{{ doc.Title }}</div>
           </div>
-          <div class="flex-shrink-0">
-            <span class="px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border" [ngClass]="{
-              'bg-amber-50 text-amber-700 border-amber-200': doc.Status === 'Pending Approval' || doc.Status === 'Draft' || doc.Status === 'Sent Back',
-              'bg-emerald-50 text-emerald-700 border-emerald-200': doc.Status === 'Approved',
-              'bg-rose-50 text-rose-700 border-rose-200': doc.Status === 'Rejected',
-              'bg-slate-100 text-slate-700 border-slate-300': doc.Status === 'Closed',
-              'bg-blue-50 text-blue-700 border-blue-200': doc.Status === 'Archived'
-            }">{{ doc.Status }}</span>
+          <div class="text-sm text-[var(--text-secondary)] mb-2 truncate" *ngIf="doc.Description">
+            {{ doc.Description }}
+          </div>
+          <div class="text-xs text-[var(--text-muted)] flex flex-wrap gap-x-4 gap-y-1 items-center">
+            <span>Submitted by: <strong class="text-[var(--text-secondary)] font-medium">{{ doc.Uploader?.Name }}</strong></span>
+            <span>Pending with: <strong class="text-[var(--text-secondary)] font-medium">{{ doc.CurrentOwner?.Name }}</strong></span>
+            <span>Holding: <strong class="text-indigo-600 dark:text-indigo-400 font-semibold">{{ getHoldingDuration(doc.AssignedAt) }}</strong></span>
+            <span>Date: {{ doc.CreatedAt | date:'short' }}</span>
           </div>
         </div>
-      </div>
-    </ng-container>
-
-    <!-- ── AUDIT HISTORY/ACTIVITY LOG VIEW ── -->
-    <ng-container *ngIf="activeTab === 'archived_closed'">
-      <!-- Loading State -->
-      <div *ngIf="loadingHistory" class="py-16 text-center">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[var(--primary)] border-t-transparent mb-4"></div>
-        <p class="text-sm font-semibold text-[var(--text-secondary)]">Loading activity logs...</p>
-      </div>
-
-      <!-- Empty State -->
-      <div *ngIf="!loadingHistory && filteredHistoryEntries.length === 0" class="text-center py-12 text-[var(--text-muted)]">
-        No activity logs found matching your action history.
-      </div>
-
-      <!-- History List -->
-      <div class="space-y-4" *ngIf="!loadingHistory && filteredHistoryEntries.length > 0">
-        <div *ngFor="let entry of filteredHistoryEntries" class="p-4 bg-slate-50 hover:bg-slate-100 border border-[var(--border)] rounded-[var(--radius-md)] flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 shadow-sm hover:shadow-md">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <span class="text-[10px] font-bold text-[var(--primary)] bg-indigo-50 border border-indigo-100/30 px-2.5 py-0.5 rounded cursor-pointer" (click)="goToDetails(entry.DocumentID)">{{ entry.DocumentNum }}</span>
-              <span class="text-[9px] font-bold text-[var(--text-secondary)] bg-slate-200/50 border border-slate-300/20 px-2 py-0.5 rounded uppercase">{{ entry.Category }}</span>
-              
-              <!-- Priority Badge -->
-              <span class="text-[9px] font-bold px-2 py-0.5 rounded border uppercase" [ngClass]="{
-                'bg-slate-100 text-slate-800 border-slate-200': entry.Priority === 'Normal',
-                'bg-rose-50 text-rose-700 border-rose-150': entry.Priority === 'Urgent',
-                'bg-amber-50 text-amber-700 border-amber-150': entry.Priority === 'Confidential'
-              }">{{ entry.Priority || 'Normal' }}</span>
-
-              <span class="font-bold text-[var(--text-primary)] text-base hover:underline cursor-pointer" (click)="goToDetails(entry.DocumentID)">{{ entry.DocumentTitle }}</span>
-            </div>
-
-            <div class="text-xs text-[var(--text-secondary)] flex flex-wrap items-center gap-x-2 gap-y-1">
-              <!-- Action Badge -->
-              <span class="px-2 py-0.5 rounded font-bold uppercase text-[9px] border" [ngClass]="{
-                'bg-emerald-50 text-emerald-700 border-emerald-200': entry.Action === 'Approved' || entry.Action === 'Signed',
-                'bg-rose-50 text-rose-700 border-rose-200': entry.Action === 'Rejected',
-                'bg-amber-50 text-amber-700 border-amber-200': entry.Action === 'Sent Back' || entry.Action === 'Recalled',
-                'bg-blue-50 text-blue-700 border-blue-200': entry.Action === 'Forwarded' || entry.Action === 'Resubmitted',
-                'bg-slate-100 text-slate-700 border-slate-350': entry.Action === 'File Replaced'
-              }">{{ entry.Action }}</span>
-
-              <span>by <strong class="font-semibold text-[var(--text-primary)]">{{ entry.Actor?.Name }}</strong> ({{ entry.Actor?.Role }})</span>
-              <span *ngIf="entry.Target">to <strong class="font-semibold text-[var(--text-primary)]">{{ entry.Target?.Name }}</strong> ({{ entry.Target?.Role }})</span>
-              <span class="text-[var(--text-muted)]">&bull; {{ entry.CreatedAt | date:'medium' }}</span>
-            </div>
-
-            <!-- Remarks -->
-            <div *ngIf="entry.Remarks" class="mt-2 text-xs bg-white border border-slate-200/80 rounded px-3 py-2 text-[var(--text-secondary)] italic">
-              &ldquo;{{ entry.Remarks }}&rdquo;
-            </div>
-          </div>
-
-          <!-- Signature -->
-          <div class="flex-shrink-0 flex items-center gap-3">
-            <div *ngIf="entry.Signature" class="flex flex-col items-center">
-              <span class="text-[8px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1">E-Signature</span>
-              <img [src]="entry.Signature" alt="Signature" class="h-10 w-28 object-contain bg-white border border-slate-200 rounded shadow-inner p-1">
-            </div>
-            <div *ngIf="!entry.Signature" class="text-[10px] text-[var(--text-muted)] font-medium italic">
-              No Signature
-            </div>
-          </div>
+        <div class="flex-shrink-0">
+          <span class="px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border" [ngClass]="{
+            'bg-amber-50 text-amber-700 border-amber-200': doc.Status === 'Pending Approval' || doc.Status === 'Draft' || doc.Status === 'Sent Back',
+            'bg-emerald-50 text-emerald-700 border-emerald-200': doc.Status === 'Approved',
+            'bg-rose-50 text-rose-700 border-rose-200': doc.Status === 'Rejected',
+            'bg-slate-100 text-slate-700 border-slate-300': doc.Status === 'Closed',
+            'bg-blue-50 text-blue-700 border-blue-200': doc.Status === 'Archived'
+          }">{{ doc.Status }}</span>
         </div>
       </div>
-    </ng-container>
+    </div>
   </div>
 
   <!-- Analytical Reports Panel (Only visible for Admin) -->
   <div class="mt-8 space-y-6" *ngIf="reportsData && currentUser.Role === 'Admin'">
     <hr class="border-[var(--border)] my-8">
-    <h2 class="text-xl font-bold text-[var(--text-primary)]">📊 Administrative Reports & Metrics</h2>
+    <h2 class="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-indigo-500"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+      Administrative Reports & Metrics
+    </h2>
     
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-white p-5 border border-[var(--border)] rounded-[var(--radius-lg)] shadow-sm">
+      <div class="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-2xl shadow-sm">
         <h4 class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Total Active Files</h4>
-        <p class="text-3xl font-extrabold text-indigo-600">{{ reportsData.total_active_files }}</p>
+        <p class="text-3xl font-extrabold text-indigo-650 dark:text-indigo-400">{{ reportsData.total_active_files }}</p>
       </div>
-      <div class="bg-white p-5 border border-[var(--border)] rounded-[var(--radius-lg)] shadow-sm">
+      <div class="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-2xl shadow-sm">
         <h4 class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Approved Files</h4>
-        <p class="text-3xl font-extrabold text-emerald-600">{{ reportsData.total_approved_files }}</p>
+        <p class="text-3xl font-extrabold text-emerald-650 dark:text-emerald-400">{{ reportsData.total_approved_files }}</p>
       </div>
-      <div class="bg-white p-5 border border-[var(--border)] rounded-[var(--radius-lg)] shadow-sm">
+      <div class="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-2xl shadow-sm">
         <h4 class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Average Resolution Time</h4>
-        <p class="text-3xl font-extrabold text-amber-600">{{ reportsData.avg_turnaround_hours | number:'1.1-1' }}h</p>
+        <p class="text-3xl font-extrabold text-amber-600 dark:text-amber-400">{{ reportsData.avg_turnaround_hours | number:'1.1-1' }}h</p>
       </div>
-      <div class="bg-white p-5 border border-[var(--border)] rounded-[var(--radius-lg)] shadow-sm">
+      <div class="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-2xl shadow-sm">
         <h4 class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">SLA Breach Ratio</h4>
-        <p class="text-3xl font-extrabold text-rose-600">{{ reportsData.sla_breaches }} breaches</p>
+        <p class="text-3xl font-extrabold text-rose-650 dark:text-rose-400">{{ reportsData.sla_breaches }} breaches</p>
       </div>
     </div>
 
@@ -320,24 +261,30 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- User Pendency Breakdown -->
       <div class="app-card">
-        <h3 class="text-base font-bold text-[var(--text-primary)] mb-4">⏳ Pendency Breakdown by Holder</h3>
+        <h3 class="text-base font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-amber-500"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Pendency Breakdown by Holder
+        </h3>
         <div class="space-y-3">
           <div *ngIf="!reportsData.user_pendency || reportsData.user_pendency.length === 0" class="text-xs text-[var(--text-muted)] italic">No pending documents.</div>
-          <div *ngFor="let p of reportsData.user_pendency" class="flex justify-between items-center p-3 bg-slate-50 border border-[var(--border)] rounded-md">
+          <div *ngFor="let p of reportsData.user_pendency" class="flex justify-between items-center p-3 bg-[var(--background)] border border-[var(--border)] rounded-md">
             <span class="text-xs font-semibold text-[var(--text-primary)]">{{ p.username }} ({{ p.role }})</span>
-            <span class="px-2.5 py-0.5 text-xs font-bold bg-indigo-50 text-indigo-700 rounded border border-indigo-150">{{ p.pending_count }} files</span>
+            <span class="px-2.5 py-0.5 text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 rounded border border-indigo-150 dark:border-indigo-900/30">{{ p.pending_count }} files</span>
           </div>
         </div>
       </div>
 
       <!-- SLA Status Distribution -->
       <div class="app-card">
-        <h3 class="text-base font-bold text-[var(--text-primary)] mb-4">📋 Category Workloads</h3>
+        <h3 class="text-base font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-emerald-500"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          Category Workloads
+        </h3>
         <div class="space-y-3">
           <div *ngIf="!reportsData.category_workloads || reportsData.category_workloads.length === 0" class="text-xs text-[var(--text-muted)] italic">No workloads recorded.</div>
-          <div *ngFor="let c of reportsData.category_workloads" class="flex justify-between items-center p-3 bg-slate-50 border border-[var(--border)] rounded-md">
+          <div *ngFor="let c of reportsData.category_workloads" class="flex justify-between items-center p-3 bg-[var(--background)] border border-[var(--border)] rounded-md">
             <span class="text-xs font-semibold text-[var(--text-primary)]">{{ c.category }}</span>
-            <span class="px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 rounded border border-emerald-150">{{ c.count }} files</span>
+            <span class="px-2.5 py-0.5 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded border border-emerald-150 dark:border-emerald-900/30">{{ c.count }} files</span>
           </div>
         </div>
       </div>

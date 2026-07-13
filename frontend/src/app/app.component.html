@@ -1,20 +1,18 @@
 <ng-container *ngIf="authService.currentUser$ | async as user; else guestLayout">
-  <div class="flex h-screen overflow-hidden bg-slate-50 font-sans">
+  <div class="flex h-screen overflow-hidden bg-[var(--background)] font-sans">
     
     <!-- Left Sidebar (Desktop Only) -->
-    <aside class="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 transition-all duration-300 flex-shrink-0" [class.md:w-20]="isSidebarCollapsed">
+    <aside class="hidden md:flex flex-col w-64 bg-[var(--surface)] border-r border-[var(--border)] transition-all duration-300 flex-shrink-0" [class.md:w-20]="isSidebarCollapsed">
       <!-- Sidebar Brand Header -->
-      <div class="h-16 px-4 border-b border-slate-200 flex items-center justify-between overflow-hidden">
+      <div class="h-16 px-4 border-b border-[var(--border)] flex items-center justify-between overflow-hidden">
         <div class="flex items-center gap-2 cursor-pointer transition-all duration-200" (click)="navigateToDashboard()" [class.md:opacity-0]="isSidebarCollapsed" [class.md:pointer-events-none]="isSidebarCollapsed">
           <!-- Logo matching screenshot -->
-          <span class="text-xl font-extrabold tracking-tight text-blue-900 leading-none">Samarth<span class="text-amber-505 font-black">X</span></span>
-          <span class="text-[9px] font-bold text-blue-500 bg-blue-50 px-1 py-0.5 rounded leading-none">eGov</span>
+          <span class="text-xl font-extrabold tracking-tight text-blue-900 dark:text-blue-400 leading-none">Samarth<span class="text-amber-500 font-black">X</span></span>
+          <span class="text-[9px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-950 dark:text-blue-300 px-1 py-0.5 rounded leading-none">eGov</span>
         </div>
         <!-- Collapse/Expand button -->
-        <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer border-0 bg-transparent flex items-center" (click)="toggleSidebar()">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+        <button class="p-1.5 rounded-lg hover:bg-[var(--background)] text-slate-500 cursor-pointer border-0 bg-transparent flex items-center" (click)="toggleSidebar()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></svg>
         </button>
       </div>
 
@@ -22,22 +20,20 @@
       <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
         
         <!-- Section: Dashboards -->
-        <div class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
+        <div class="px-3 mb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
           Dashboards
         </div>
 
-        <!-- STATE Dashboard / Dashboard Home -->
+        <!-- Dashboard Home -->
         <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                [class.bg-blue-50]="isActiveDashboard() && activeTab !== 'archived_closed'"
-                [class.text-blue-700]="isActiveDashboard() && activeTab !== 'archived_closed'"
-                [class.text-slate-600]="!isActiveDashboard() || activeTab === 'archived_closed'"
-                [class.hover:bg-slate-50]="!isActiveDashboard() || activeTab === 'archived_closed'"
+                [class.bg-[var(--primary-light)]]="isActiveDashboard() && activeTab !== 'archived_closed'"
+                [class.text-[var(--primary-active)]]="isActiveDashboard() && activeTab !== 'archived_closed'"
+                [class.text-[var(--text-secondary)]]="!isActiveDashboard() || activeTab === 'archived_closed'"
+                [class.hover:bg-[var(--background)]]="!isActiveDashboard() || activeTab === 'archived_closed'"
                 (click)="navigateToDashboard()"
-                [title]="isSidebarCollapsed ? 'STATE Dashboard' : ''">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" class="w-4.5 h-4.5 flex-shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
-          </svg>
-          <span *ngIf="!isSidebarCollapsed">STATE Dashboard</span>
+                [title]="isSidebarCollapsed ? 'Dashboard' : ''">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>
+          <span *ngIf="!isSidebarCollapsed">Dashboard</span>
         </button>
 
         <!-- Admin Specific Navigation Links -->
@@ -45,105 +41,100 @@
           
           <!-- User Management -->
           <button class="w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-blue-50]="router.url.startsWith('/admin') && activeAdminSection === 'users'"
-                  [class.text-blue-700]="router.url.startsWith('/admin') && activeAdminSection === 'users'"
-                  [class.text-slate-600]="!router.url.startsWith('/admin') || activeAdminSection !== 'users'"
-                  [class.hover:bg-slate-50]="!router.url.startsWith('/admin') || activeAdminSection !== 'users'"
+                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/admin') && activeAdminSection === 'users'"
+                  [class.text-[var(--primary-active)]]="router.url.startsWith('/admin') && activeAdminSection === 'users'"
+                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'users'"
+                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'users'"
                   (click)="navigateToAdminSection('users')"
                   [title]="isSidebarCollapsed ? 'User Management' : ''">
             <div class="flex items-center gap-3 min-w-0">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5 flex-shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span class="truncate" *ngIf="!isSidebarCollapsed">User Management</span>
             </div>
-            <svg *ngIf="!isSidebarCollapsed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 text-slate-400 flex-shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-            </svg>
+            <svg *ngIf="!isSidebarCollapsed" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 text-slate-400 flex-shrink-0"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
 
           <!-- School Config -->
           <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-blue-50]="router.url.startsWith('/admin') && activeAdminSection === 'schools'"
-                  [class.text-blue-700]="router.url.startsWith('/admin') && activeAdminSection === 'schools'"
-                  [class.text-slate-600]="!router.url.startsWith('/admin') || activeAdminSection !== 'schools'"
-                  [class.hover:bg-slate-50]="!router.url.startsWith('/admin') || activeAdminSection !== 'schools'"
+                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/admin') && activeAdminSection === 'schools'"
+                  [class.text-[var(--primary-active)]]="router.url.startsWith('/admin') && activeAdminSection === 'schools'"
+                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'schools'"
+                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'schools'"
                   (click)="navigateToAdminSection('schools')"
                   [title]="isSidebarCollapsed ? 'School Dashboard' : ''">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5 flex-shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 3.741-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><path d="m4 6 8-4 8 4M18 10v9M6 10v9M12 10v9M2 22h20"/></svg>
             <span *ngIf="!isSidebarCollapsed">School Dashboard</span>
           </button>
 
           <!-- Document Types Config -->
           <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-blue-50]="router.url.startsWith('/admin') && activeAdminSection === 'doctypes'"
-                  [class.text-blue-700]="router.url.startsWith('/admin') && activeAdminSection === 'doctypes'"
-                  [class.text-slate-600]="!router.url.startsWith('/admin') || activeAdminSection !== 'doctypes'"
-                  [class.hover:bg-slate-50]="!router.url.startsWith('/admin') || activeAdminSection !== 'doctypes'"
+                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/admin') && activeAdminSection === 'doctypes'"
+                  [class.text-[var(--primary-active)]]="router.url.startsWith('/admin') && activeAdminSection === 'doctypes'"
+                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'doctypes'"
+                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'doctypes'"
                   (click)="navigateToAdminSection('doctypes')"
                   [title]="isSidebarCollapsed ? 'Department Dashboard' : ''">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5 flex-shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 5h.01M8 9h.01M8 13h.01M8 17h.01M12 5h.01M12 9h.01M12 13h.01M12 17h.01M16 5h.01M16 9h.01M16 13h.01M16 17h.01"/></svg>
             <span *ngIf="!isSidebarCollapsed">Department Dashboard</span>
           </button>
         </ng-container>
 
         <!-- Section: Modules / Document Folders -->
         <div class="pt-4" *ngIf="documentTypes && documentTypes.length > 0">
-          <div class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
-            Module Folders
+          <div class="px-3 mb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
+            Document Modules
           </div>
           
           <button *ngFor="let dt of documentTypes"
                   class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-blue-50]="router.url.startsWith('/dashboard') && selectedFolder === dt.Name"
-                  [class.text-blue-700]="router.url.startsWith('/dashboard') && selectedFolder === dt.Name"
-                  [class.text-slate-600]="!router.url.startsWith('/dashboard') || selectedFolder !== dt.Name"
-                  [class.hover:bg-slate-50]="!router.url.startsWith('/dashboard') || selectedFolder !== dt.Name"
+                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/dashboard') && selectedFolder === dt.Name"
+                  [class.text-[var(--primary-active)]]="router.url.startsWith('/dashboard') && selectedFolder === dt.Name"
+                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/dashboard') || selectedFolder !== dt.Name"
+                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/dashboard') || selectedFolder !== dt.Name"
                   (click)="selectSidebarFolder(dt.Name)"
                   [title]="isSidebarCollapsed ? dt.Name : ''">
-            <!-- Dynamic Category Folder Icons -->
-            <span class="text-base leading-none flex-shrink-0">
-              {{ getCategoryIcon(dt.Name) }}
-            </span>
+            <!-- Dynamic Category Folder Lucide SVG Icons -->
+            <ng-container [ngSwitch]="dt.Name.toLowerCase()">
+              <svg *ngSwitchCase="'assignment'" class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <svg *ngSwitchCase="'leave application'" class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+              <svg *ngSwitchCase="'report'" class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+              <svg *ngSwitchCase="'permission slip'" class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3M19 4l3 3"/></svg>
+              <svg *ngSwitchCase="'transfer certificate request'" class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <svg *ngSwitchCase="'general request letter'" class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              <svg *ngSwitchCase="'fee concession form'" class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <svg *ngSwitchDefault class="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+            </ng-container>
             <span class="truncate" *ngIf="!isSidebarCollapsed">{{ dt.Name }}</span>
           </button>
         </div>
 
         <!-- Section: User Workspace -->
         <div class="pt-4">
-          <div class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
+          <div class="px-3 mb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
             User Workspace
           </div>
           
           <!-- Submit Document -->
           <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-blue-50]="router.url === '/upload'"
-                  [class.text-blue-700]="router.url === '/upload'"
-                  [class.text-slate-600]="router.url !== '/upload'"
-                  [class.hover:bg-slate-50]="router.url !== '/upload'"
+                  [class.bg-[var(--primary-light)]]="router.url === '/upload'"
+                  [class.text-[var(--primary-active)]]="router.url === '/upload'"
+                  [class.text-[var(--text-secondary)]]="router.url !== '/upload'"
+                  [class.hover:bg-[var(--background)]]="router.url !== '/upload'"
                   (click)="router.navigate(['/upload'])"
                   [title]="isSidebarCollapsed ? 'Submit Document' : ''">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" class="w-4.5 h-4.5 flex-shrink-0 text-emerald-500">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0 text-emerald-500"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
             <span *ngIf="!isSidebarCollapsed">Submit Document</span>
           </button>
 
-          <!-- Audit/History -->
+          <!-- Audit History Page -->
           <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-blue-50]="router.url.startsWith('/dashboard') && activeTab === 'archived_closed'"
-                  [class.text-blue-700]="router.url.startsWith('/dashboard') && activeTab === 'archived_closed'"
-                  [class.text-slate-600]="!router.url.startsWith('/dashboard') || activeTab !== 'archived_closed'"
-                  [class.hover:bg-slate-50]="!router.url.startsWith('/dashboard') || activeTab !== 'archived_closed'"
-                  (click)="selectTab('archived_closed')"
+                  [class.bg-[var(--primary-light)]]="router.url === '/history'"
+                  [class.text-[var(--primary-active)]]="router.url === '/history'"
+                  [class.text-[var(--text-secondary)]]="router.url !== '/history'"
+                  [class.hover:bg-[var(--background)]]="router.url !== '/history'"
+                  (click)="router.navigate(['/history'])"
                   [title]="isSidebarCollapsed ? 'Audit History' : ''">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5 flex-shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M12 2a10 10 0 0 0-7.38 3.24L3 7v-5"/></svg>
             <span *ngIf="!isSidebarCollapsed">Audit History</span>
           </button>
         </div>
@@ -151,13 +142,11 @@
       </nav>
 
       <!-- Sidebar Footer -->
-      <div class="p-3 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-2">
-        <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold text-rose-600 rounded-lg hover:bg-rose-50 border-0 cursor-pointer transition-all text-left bg-transparent" 
+      <div class="p-3 border-t border-[var(--border)] bg-[var(--background)]/30 flex flex-col gap-2">
+        <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 border-0 cursor-pointer transition-all text-left bg-transparent" 
                 (click)="logout()"
                 [title]="isSidebarCollapsed ? 'Sign Out' : ''">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5 flex-shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
           <span *ngIf="!isSidebarCollapsed">Sign Out</span>
         </button>
       </div>
@@ -165,20 +154,20 @@
     </aside>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col overflow-hidden h-full">
+    <div class="flex-1 flex flex-col overflow-hidden h-full bg-[var(--background)]">
       
       <!-- Top Header -->
-      <header class="h-16 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center justify-between z-10 flex-shrink-0">
+      <header class="h-16 bg-[var(--surface)] border-b border-[var(--border)] px-4 md:px-6 flex items-center justify-between z-10 flex-shrink-0">
         
         <!-- Mobile Left: Brand & Toggle -->
         <div class="flex items-center gap-2 md:hidden">
-          <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 border-0 bg-transparent flex items-center" (click)="toggleMobileMenu()">
+          <button class="p-1.5 rounded-lg hover:bg-[var(--background)] text-slate-600 dark:text-slate-400 border-0 bg-transparent flex items-center cursor-pointer" (click)="toggleMobileMenu()">
             <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
           <div class="flex items-center gap-1.5" (click)="navigateToDashboard()">
-            <span class="text-lg font-extrabold tracking-tight text-blue-900 leading-none">Samarth<span class="text-amber-500">X</span></span>
+            <span class="text-lg font-extrabold tracking-tight text-[var(--text-primary)] leading-none">Samarth<span class="text-amber-500 font-black">X</span></span>
           </div>
         </div>
 
@@ -190,8 +179,10 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
+            <!-- Padding inline override style to fix overlaps -->
             <input type="text" 
-                   class="block w-full pl-9 pr-3 py-1.8 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-800 placeholder-slate-400" 
+                   class="block w-full pr-3 py-1.8 text-xs bg-[var(--background)] border border-[var(--border)] rounded-lg focus:outline-none focus:bg-[var(--surface)] focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-[var(--text-primary)] placeholder-slate-450 dark:placeholder-slate-500" 
+                   style="padding-left: 2.5rem;"
                    placeholder="Search file, title, tags..."
                    [ngModel]="searchQuery"
                    (input)="onSearchInput($event)">
@@ -201,50 +192,37 @@
         <!-- Right Header Elements -->
         <div class="flex items-center gap-2 md:gap-4">
           
-          <!-- Academic Year Indicator -->
-          <div class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-400">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-            Academic Year : 2026 / 2027
-          </div>
-
           <!-- Utility Icons -->
-          <div class="flex items-center gap-0.5 md:gap-1 text-slate-400 border-r border-slate-200 pr-2 md:pr-4">
-            <span class="text-sm px-1 cursor-default hover:opacity-85">🇮🇳</span>
+          <div class="flex items-center gap-1 text-slate-400 border-r border-[var(--border)] pr-2 md:pr-4">
             
-            <button class="p-1.5 rounded-lg hover:bg-slate-50 hover:text-slate-655 cursor-pointer border-0 bg-transparent text-slate-400 flex items-center" title="Toggle Theme" (click)="toggleTheme()">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-              </svg>
+            <!-- Night Theme Toggler -->
+            <button class="p-1.5 rounded-lg hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent text-slate-400 flex items-center" title="Toggle Theme" (click)="toggleTheme()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
             </button>
             
-            <button class="hidden sm:inline-flex p-1.5 rounded-lg hover:bg-slate-50 hover:text-slate-655 cursor-pointer border-0 bg-transparent text-slate-400 flex items-center" title="Messages">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-              </svg>
+            <!-- Messages Link (Routes to Inbox) -->
+            <button class="p-1.5 rounded-lg hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent text-slate-400 flex items-center" title="Messages / Inbox" (click)="selectTab('pending_me')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
             </button>
 
             <!-- Notifications Dropdown -->
             <div class="relative">
-              <button class="p-1.5 rounded-lg hover:bg-slate-50 hover:text-slate-655 cursor-pointer border-0 bg-transparent text-slate-400 relative flex items-center" (click)="toggleNotifications(); showProfileDropdown = false" title="Notifications">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4.5 h-4.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                </svg>
+              <button class="p-1.5 rounded-lg hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent text-slate-400 relative flex items-center" (click)="toggleNotifications(); showProfileDropdown = false" title="Notifications">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
                 <span *ngIf="unreadCount > 0" class="absolute top-1 right-1 flex h-2 w-2">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-505"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                 </span>
               </button>
 
               <!-- Notifications Dropdown Panel -->
-              <div *ngIf="showNotificationsDropdown" class="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50">
-                <h4 class="px-4 py-2 border-b border-slate-100 text-xs font-bold text-slate-505 uppercase tracking-wider m-0">Notifications</h4>
+              <div *ngIf="showNotificationsDropdown" class="absolute right-0 mt-2 w-80 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg py-2 z-50 text-[var(--text-primary)]">
+                <h4 class="px-4 py-2 border-b border-[var(--border)] text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider m-0">Notifications</h4>
                 <div class="max-h-60 overflow-y-auto">
                   <div *ngIf="notifications.length === 0" class="px-4 py-6 text-xs text-slate-400 text-center">
                     No notifications yet
                   </div>
-                  <div *ngFor="let n of notifications" class="px-4 py-3 hover:bg-slate-50 text-xs border-b border-slate-50 last:border-0 text-slate-700">
+                  <div *ngFor="let n of notifications" class="px-4 py-3 hover:bg-[var(--background)] text-xs border-b border-[var(--border)]/20 last:border-0 text-[var(--text-secondary)]">
                     <div class="font-semibold mb-0.5">{{ getNotificationText(n) }}</div>
                     <div class="text-[9px] text-slate-400">{{ n.CreatedAt | date:'short' }}</div>
                   </div>
@@ -255,14 +233,14 @@
 
           <!-- User Profile Dropdown -->
           <div class="relative">
-            <button class="flex items-center gap-2 p-1 md:p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer transition-all border border-transparent text-left bg-transparent" 
+            <button class="flex items-center gap-2 p-1 md:p-1.5 hover:bg-[var(--background)] rounded-lg cursor-pointer transition-all border border-transparent text-left bg-transparent" 
                     (click)="toggleProfileDropdown(); showNotificationsDropdown = false">
-              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center font-bold text-xs text-blue-750 uppercase shadow-inner border border-blue-200/50">
+              <div class="w-8 h-8 bg-blue-105 dark:bg-blue-950 font-bold text-xs text-blue-750 dark:text-blue-300 rounded-full flex items-center justify-center shadow-inner border border-blue-200/50">
                 {{ (user.Name || user.name || 'U').substring(0,2) }}
               </div>
               <div class="hidden sm:block leading-none pr-1">
-                <div class="text-xs font-bold text-slate-800">{{ user.Name || user.name }}</div>
-                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{{ user.Role || user.role }}</div>
+                <div class="text-xs font-bold text-[var(--text-primary)]">{{ user.Name || user.name }}</div>
+                <div class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-0.5">{{ user.Role || user.role }}</div>
               </div>
               <svg class="h-3 w-3 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -270,18 +248,18 @@
             </button>
 
             <!-- User Menu Dropdown Panel -->
-            <div *ngIf="showProfileDropdown" class="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-2.5 z-50">
-              <div class="px-4 py-2 border-b border-slate-100 mb-1">
-                <div class="text-xs font-bold text-slate-800">{{ user.Name || user.name }}</div>
-                <div class="text-[10px] text-slate-505 truncate">{{ user.Email || user.email }}</div>
-                <div class="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5 inline-block mt-1.5 uppercase tracking-wider">
+            <div *ngIf="showProfileDropdown" class="absolute right-0 mt-2 w-56 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg py-2.5 z-50 text-[var(--text-primary)]">
+              <div class="px-4 py-2 border-b border-[var(--border)] mb-1">
+                <div class="text-xs font-bold text-[var(--text-primary)]">{{ user.Name || user.name }}</div>
+                <div class="text-[10px] text-[var(--text-muted)] truncate">{{ user.Email || user.email }}</div>
+                <div class="text-[9px] font-bold text-blue-600 dark:text-blue-450 bg-blue-50 dark:bg-blue-950 border border-blue-100/30 rounded px-1.5 py-0.5 inline-block mt-1.5 uppercase tracking-wider">
                   🏢 Greenwood High
                 </div>
               </div>
-              <button class="w-full text-left px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-800 cursor-pointer border-0 bg-transparent" (click)="selectTab('pending_me'); showProfileDropdown = false">Dashboard Home</button>
-              <button class="w-full text-left px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-800 cursor-pointer border-0 bg-transparent" (click)="router.navigate(['/upload']); showProfileDropdown = false">Submit Document</button>
-              <hr class="border-slate-100 my-1.5">
-              <button class="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 cursor-pointer font-semibold border-0 bg-transparent" (click)="logout(); showProfileDropdown = false">Logout</button>
+              <button class="w-full text-left px-4 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent" (click)="selectTab('pending_me'); showProfileDropdown = false">Dashboard Home</button>
+              <button class="w-full text-left px-4 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent" (click)="router.navigate(['/upload']); showProfileDropdown = false">Submit Document</button>
+              <hr class="border-[var(--border)] my-1.5">
+              <button class="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer font-semibold border-0 bg-transparent" (click)="logout(); showProfileDropdown = false">Logout</button>
             </div>
           </div>
 
@@ -290,7 +268,7 @@
       </header>
 
       <!-- Main Content Scroll Area -->
-      <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6">
+      <main class="flex-1 overflow-y-auto bg-[var(--background)] p-4 md:p-6">
         <router-outlet></router-outlet>
       </main>
 
@@ -300,48 +278,48 @@
 
   <!-- Mobile Collapsible Side Draw Menu overlay -->
   <div *ngIf="showMobileMenu" class="md:hidden fixed inset-0 z-50 flex">
-    <div class="fixed inset-0 bg-slate-900/30 backdrop-blur-xs" (click)="toggleMobileMenu()"></div>
-    <div class="relative flex-1 flex flex-col max-w-xs w-full bg-white border-r border-slate-200">
-      <div class="h-16 px-4 border-b border-slate-200 flex items-center justify-between">
-        <span class="text-xl font-extrabold tracking-tight text-blue-900 leading-none">Samarth<span class="text-amber-500">X</span></span>
-        <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-650 border-0 bg-transparent flex items-center" (click)="toggleMobileMenu()">
+    <div class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs" (click)="toggleMobileMenu()"></div>
+    <div class="relative flex-1 flex flex-col max-w-xs w-full bg-[var(--surface)] border-r border-[var(--border)]">
+      <div class="h-16 px-4 border-b border-[var(--border)] flex items-center justify-between">
+        <span class="text-xl font-extrabold tracking-tight text-[var(--text-primary)] leading-none">Samarth<span class="text-amber-500">X</span></span>
+        <button class="p-1.5 rounded-lg hover:bg-[var(--background)] text-slate-500 border-0 bg-transparent flex items-center" (click)="toggleMobileMenu()">
           <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
       <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-slate-600 hover:bg-slate-50" (click)="navigateToDashboard(); toggleMobileMenu()">
-          STATE Dashboard
+        <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]" (click)="navigateToDashboard(); toggleMobileMenu()">
+          Dashboard
         </button>
         <ng-container *ngIf="(user.Role || user.role) === 'Admin' || (user.Role || user.role) === 'SuperAdmin'">
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-slate-600 hover:bg-slate-50" (click)="navigateToAdminSection('users'); toggleMobileMenu()">
+          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]" (click)="navigateToAdminSection('users'); toggleMobileMenu()">
             User Management
           </button>
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-slate-600 hover:bg-slate-50" (click)="navigateToAdminSection('schools'); toggleMobileMenu()">
+          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]" (click)="navigateToAdminSection('schools'); toggleMobileMenu()">
             School Dashboard
           </button>
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-slate-600 hover:bg-slate-50" (click)="navigateToAdminSection('doctypes'); toggleMobileMenu()">
+          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]" (click)="navigateToAdminSection('doctypes'); toggleMobileMenu()">
             Department Dashboard
           </button>
         </ng-container>
-        <div class="pt-4 border-t border-slate-100 mt-4" *ngIf="documentTypes && documentTypes.length > 0">
-          <div class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Module Folders</div>
-          <button *ngFor="let dt of documentTypes" class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-slate-600 hover:bg-slate-50" (click)="selectSidebarFolder(dt.Name); toggleMobileMenu()">
-            {{ getCategoryIcon(dt.Name) }} {{ dt.Name }}
+        <div class="pt-4 border-t border-[var(--border)] mt-4" *ngIf="documentTypes && documentTypes.length > 0">
+          <div class="px-3 mb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Document Modules</div>
+          <button *ngFor="let dt of documentTypes" class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]" (click)="selectSidebarFolder(dt.Name); toggleMobileMenu()">
+            {{ dt.Name }}
           </button>
         </div>
-        <div class="pt-4 border-t border-slate-100 mt-4">
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-slate-600 hover:bg-slate-50" (click)="router.navigate(['/upload']); toggleMobileMenu()">
+        <div class="pt-4 border-t border-[var(--border)] mt-4">
+          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]" (click)="router.navigate(['/upload']); toggleMobileMenu()">
             Submit Document
           </button>
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-slate-600 hover:bg-slate-50" (click)="selectTab('archived_closed'); toggleMobileMenu()">
+          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]" (click)="router.navigate(['/history']); toggleMobileMenu()">
             Audit History
           </button>
         </div>
       </nav>
-      <div class="p-3 border-t border-slate-202">
-        <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold text-rose-650 rounded-lg hover:bg-rose-50 border-0 cursor-pointer transition-all text-left bg-transparent" (click)="logout(); toggleMobileMenu()">
+      <div class="p-3 border-t border-[var(--border)]">
+        <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold text-rose-650 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 border-0 cursor-pointer transition-all text-left bg-transparent" (click)="logout(); toggleMobileMenu()">
           Sign Out
         </button>
       </div>
