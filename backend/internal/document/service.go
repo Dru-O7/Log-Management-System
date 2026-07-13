@@ -45,6 +45,7 @@ type Service interface {
 	GetAttachmentFilePathForDownload(attID, authenticatedUserID uuid.UUID) (string, error)
 	GetNotifications(recipientID uuid.UUID) ([]models.Notification, error)
 	GetReports(schoolID uuid.UUID) (interface{}, error)
+	GetMyHistory(userID uuid.UUID) ([]UserHistoryEntry, error)
 }
 
 type service struct {
@@ -1483,4 +1484,35 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Sync()
+}
+
+func (s *service) GetMyHistory(userID uuid.UUID) ([]UserHistoryEntry, error) {
+	histories, err := s.repo.GetHistoryByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	entries := make([]UserHistoryEntry, 0, len(histories))
+	for _, h := range histories {
+		entry := UserHistoryEntry{
+			ID:             h.ID,
+			DocumentID:     h.DocumentID,
+			ActorID:        h.ActorID,
+			TargetID:       h.TargetID,
+			Action:         h.Action,
+			Remarks:        h.Remarks,
+			Signature:      h.Signature,
+			CreatedAt:      h.CreatedAt,
+			Actor:          h.Actor,
+			Target:         h.Target,
+			DocumentTitle:  h.Document.Title,
+			DocumentNum:    h.Document.UniqueNumber,
+			DocumentStatus: h.Document.Status,
+			Category:       h.Document.Category,
+			Priority:       h.Document.Priority,
+		}
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
 }

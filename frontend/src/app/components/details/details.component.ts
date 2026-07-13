@@ -89,8 +89,6 @@ export class DetailsComponent implements OnInit {
         const url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
         this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
 
-        this.draftContent = res.document.DraftSpace || '';
-        
         if (this.isDocx(this.document.Filename)) {
           setTimeout(() => {
             this.renderDocxPreview();
