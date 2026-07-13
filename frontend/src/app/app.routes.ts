@@ -5,6 +5,7 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { UploadComponent } from './components/upload/upload.component';
 import { DetailsComponent } from './components/details/details.component';
 import { AdminComponent } from './components/admin/admin.component';
+import { NotFoundComponent } from './components/not-found/not-found.component';
 import { authGuard } from './auth.guard';
 import { guestGuard } from './guest.guard';
 import { adminGuard } from './admin.guard';
@@ -18,5 +19,7 @@ export const routes: Routes = [
   { path: 'details/:id',component: DetailsComponent,   canActivate: [authGuard] },
   // Admin route
   { path: 'admin',      component: AdminComponent,     canActivate: [authGuard, adminGuard] },
+  // Wildcard 404 Route
+  { path: '**',         component: NotFoundComponent }
 ];
 
