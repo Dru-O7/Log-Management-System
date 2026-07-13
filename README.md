@@ -133,18 +133,18 @@ The Angular frontend provides dashboard controls for document actions, tracking 
 
 The database is pre-seeded with mock users. You can log in on the login screen by entering one of these email addresses along with the default password **`password`**:
 
+### Admins
+- **Admin User**: `admin@school.edu` (Role: Admin — automatically redirected to `/admin` dashboard)
+
 ### Students
 - **Alice Smith**: `alice@school.edu` (Class 10-A)
 
 ### Teachers
 - **Bob Johnson**: `bob@school.edu` (Subject: Science, Class 10-A)
-- **Diana Prince**: `diana@school.edu` (Subject: History, Class 10-B)
-- **Evan Wright**: `evan@school.edu` (Subject: Mathematics, Class 10-C)
-- **Fiona Gallagher**: `fiona@school.edu` (Subject: English, Class 10-D)
+- **Diana Prince**: `diana@school.edu` (Subject: Mathematics, Class 10-B)
 
 ### Principals
 - **Charlie Brown**: `charlie@school.edu`
-- **George Vance**: `george@school.edu`
 
 ### Parents
 - **David Smith**: `david@school.edu` (Parent of Alice Smith)
@@ -161,6 +161,10 @@ The database is pre-seeded with mock users. You can log in on the login screen b
 4. **Document Previews (PDF & DOCX)**: 
    - Embeds an inline browser-native PDF viewer dynamically using `DomSanitizer` inside the document details page.
    - Embeds a client-side DOCX document viewer using the `docx-preview` library.
-5. **Electronic Signature Stamping**:
-   - Overlays user signature (drawn via HTML5 Canvas) onto PDFs.
-   - Uses custom backend parsing to unzip, inject media assets, update relationship mapping and document XML markup, and re-bundle to stamp signature onto DOCX documents.
+5. **Action Stamp Tokens**: Generates and overlays a secure, verifiable transaction token (e.g. `SIG-TX-XXXX`) automatically when an action (Approve/Reject) is completed.
+6. **Separate Admin Dashboard (`/admin`)**: A centralized, secure console for school administrators allowing:
+   - System stats oversight (users, documents, SLA metrics).
+   - CRUD management for users and class settings.
+   - CRUD management for document categories and workflow rules.
+   - School settings adjustments.
+
