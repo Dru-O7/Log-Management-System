@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"office-file-sharing/backend/internal/admin"
 	"office-file-sharing/backend/internal/auth"
 	"office-file-sharing/backend/internal/document"
 	"office-file-sharing/backend/internal/shared/config"
@@ -64,21 +65,25 @@ func main() {
 	authRepo := auth.NewRepository(database)
 	userRepo := user.NewRepository(database)
 	docRepo := document.NewRepository(database)
+	adminRepo := admin.NewRepository(database)
 
 	// Services
 	authService := auth.NewService(authRepo, []byte(cfg.JWTSecret))
 	userService := user.NewService(userRepo)
 	docService := document.NewService(docRepo, "./uploads")
+	adminService := admin.NewService(adminRepo)
 
 	// Handlers
 	authHandler := auth.NewHandler(authService)
 	userHandler := user.NewHandler(userService)
 	docHandler := document.NewHandler(docService)
+	adminHandler := admin.NewHandler(adminService)
 
 	// Register Modular Routes
 	auth.RegisterRoutes(api, authHandler)
 	user.RegisterRoutes(api, userHandler, []byte(cfg.JWTSecret))
 	document.RegisterRoutes(api, docHandler, []byte(cfg.JWTSecret))
+	admin.RegisterRoutes(api, adminHandler, []byte(cfg.JWTSecret), database)
 
 	// Start background SLA auto-escalation job
 	go startSLAScheduler(database)
@@ -206,37 +211,68 @@ func seedData(gormDB *gorm.DB) {
 		gormDB.First(&school)
 	}
 
-	// 2. Seed Users
-	var userCount int64
-	gormDB.Model(&models.User{}).Count(&userCount)
-	if userCount == 0 {
-		hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
-		if err != nil {
-			log.Fatal("Failed to hash default password:", err)
-		}
-		users := []models.User{
-			{Name: "Alice Smith", Email: "alice@school.edu", PasswordHash: string(hash), Role: "Student", SchoolID: &school.ID, ClassSection: "10-A"},
-			{Name: "Bob Johnson", Email: "bob@school.edu", PasswordHash: string(hash), Role: "Teacher", SchoolID: &school.ID, ClassSection: "10-A", Subject: "Science"},
-			{Name: "Charlie Brown", Email: "charlie@school.edu", PasswordHash: string(hash), Role: "Principal", SchoolID: &school.ID},
-			{Name: "David Smith", Email: "david@school.edu", PasswordHash: string(hash), Role: "Parent", SchoolID: &school.ID},
-		}
-		for i := range users {
-			users[i].ID = uuid.New()
-			gormDB.Create(&users[i])
-		}
-		log.Println("Database seeded with school-scoped users.")
+	// 2. Seed Users (idempotent — checks each email individually)
+	hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal("Failed to hash default password:", err)
+	}
 
-		// Establish Parent-Child link (David is Alice's parent)
-		var alice, david models.User
-		gormDB.First(&alice, "email = ?", "alice@school.edu")
-		gormDB.First(&david, "email = ?", "david@school.edu")
-		if alice.ID != uuid.Nil && david.ID != uuid.Nil {
-			pc := models.ParentChild{
-				ParentID: david.ID,
-				ChildID:  alice.ID,
+	type seedUser struct {
+		Name         string
+		Email        string
+		Role         string
+		ClassSection string
+		Subject      string
+	}
+
+	seedUsers := []seedUser{
+		// 4 Students
+		{Name: "Alice Smith", Email: "alice@school.edu", Role: "Student", ClassSection: "10-A"},
+		{Name: "Brian Lee", Email: "brian@school.edu", Role: "Student", ClassSection: "10-B"},
+		{Name: "Chloe Davis", Email: "chloe@school.edu", Role: "Student", ClassSection: "10-C"},
+		{Name: "Daniel Roy", Email: "daniel@school.edu", Role: "Student", ClassSection: "10-D"},
+		// 2 Teachers
+		{Name: "Bob Johnson", Email: "bob@school.edu", Role: "Teacher", ClassSection: "10-A", Subject: "Science"},
+		{Name: "Diana Prince", Email: "diana@school.edu", Role: "Teacher", ClassSection: "10-B", Subject: "Mathematics"},
+		// 1 Principal
+		{Name: "Charlie Brown", Email: "charlie@school.edu", Role: "Principal"},
+		// 1 Admin (school-level admin)
+		{Name: "Admin User", Email: "admin@school.edu", Role: "Admin"},
+		// 1 Parent (kept for parent-child relationship)
+		{Name: "David Smith", Email: "david@school.edu", Role: "Parent"},
+	}
+
+	for _, su := range seedUsers {
+		var existing models.User
+		result := gormDB.Where("email = ?", su.Email).First(&existing)
+		if result.Error != nil {
+			// Not found — create
+			newUser := models.User{
+				ID:           uuid.New(),
+				Name:         su.Name,
+				Email:        su.Email,
+				PasswordHash: string(hash),
+				Role:         su.Role,
+				SchoolID:     &school.ID,
+				ClassSection: su.ClassSection,
+				Subject:      su.Subject,
 			}
+			gormDB.Create(&newUser)
+			log.Printf("Seeded user: %s (%s)", su.Name, su.Role)
+		}
+	}
+
+	// Establish Parent-Child link (David → Alice)
+	var alice, david models.User
+	gormDB.First(&alice, "email = ?", "alice@school.edu")
+	gormDB.First(&david, "email = ?", "david@school.edu")
+	if alice.ID != uuid.Nil && david.ID != uuid.Nil {
+		var pcCount int64
+		gormDB.Model(&models.ParentChild{}).Where("parent_id = ? AND child_id = ?", david.ID, alice.ID).Count(&pcCount)
+		if pcCount == 0 {
+			pc := models.ParentChild{ParentID: david.ID, ChildID: alice.ID}
 			gormDB.Create(&pc)
-			log.Println("Established Parent-Child relationship: David -> Alice")
+			log.Println("Established Parent-Child relationship: David → Alice")
 		}
 	}
 

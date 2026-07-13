@@ -78,4 +78,51 @@ export class ApiService {
   getReports() {
     return this.http.get<any>(`${this.apiUrl}/reports`);
   }
+
+  // ── Admin API ──────────────────────────────────────────────────────────────
+
+  getAdminStats() {
+    return this.http.get<any>(`${this.apiUrl}/admin/stats`);
+  }
+
+  getAdminUsers() {
+    return this.http.get<any[]>(`${this.apiUrl}/admin/users`);
+  }
+
+  adminCreateUser(data: any) {
+    return this.http.post<any>(`${this.apiUrl}/admin/users`, data);
+  }
+
+  adminUpdateUser(id: string, data: any) {
+    return this.http.put<any>(`${this.apiUrl}/admin/users/${id}`, data);
+  }
+
+  adminDeleteUser(id: string) {
+    return this.http.delete<any>(`${this.apiUrl}/admin/users/${id}`);
+  }
+
+  getAdminDocumentTypes() {
+    return this.http.get<any[]>(`${this.apiUrl}/admin/document-types`);
+  }
+
+  adminCreateDocumentType(data: any) {
+    return this.http.post<any>(`${this.apiUrl}/admin/document-types`, data);
+  }
+
+  adminUpdateDocumentType(id: string, data: any) {
+    return this.http.put<any>(`${this.apiUrl}/admin/document-types/${id}`, data);
+  }
+
+  adminDeleteDocumentType(id: string) {
+    return this.http.delete<any>(`${this.apiUrl}/admin/document-types/${id}`);
+  }
+
+  getAdminSchools() {
+    return this.http.get<any[]>(`${this.apiUrl}/admin/schools`);
+  }
+
+  adminUpdateSchool(id: string, data: any) {
+    return this.http.put<any>(`${this.apiUrl}/admin/schools/${id}`, data);
+  }
 }
+
