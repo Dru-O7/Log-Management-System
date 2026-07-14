@@ -93,14 +93,15 @@ export class DetailsComponent implements OnInit {
         this.history = res.history;
         this.pdfCacheBuster = Date.now();
         
-        const token = this.auth.getToken();
-        let url = '';
-        if (this.isPdf(this.document.Filename)) {
-          url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
-        } else if (this.isDocx(this.document.Filename) || this.isDoc(this.document.Filename)) {
-          url = `http://localhost:8080/api/documents/${this.document.ID}/preview-pdf?token=${token}&cb=${this.pdfCacheBuster}`;
-        }
-        this.safePdfUrl = url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+        this.api.previewDocumentFile(this.document.ID).subscribe({
+          next: (blob: Blob) => {
+            const objectUrl = URL.createObjectURL(blob);
+            this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+          },
+          error: (err) => {
+            console.error('Failed to load PDF preview:', err);
+          }
+        });
         this.loading = false;
       },
       error: (err) => {
@@ -111,8 +112,22 @@ export class DetailsComponent implements OnInit {
   }
 
   download() {
-    const token = this.auth.getToken();
-    window.open(`http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}`, '_blank');
+    this.api.downloadDocumentFile(this.document.ID).subscribe({
+      next: (blob: Blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = this.document.Filename || 'document';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+      },
+      error: (err) => {
+        console.error('Download failed:', err);
+        alert('Failed to download document.');
+      }
+    });
   }
 
   submitAction(action: string) {
@@ -294,10 +309,24 @@ export class DetailsComponent implements OnInit {
     });
   }
 
-  getDownloadAttachmentUrl(att: any): string {
-    const token = this.auth.getToken();
+  downloadAttachment(att: any) {
     const id = att.id || att.ID;
-    return `http://localhost:8080/api/attachments/${id}/download?token=${token}&cb=${Date.now()}`;
+    this.api.downloadAttachmentFile(id).subscribe({
+      next: (blob: Blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = att.Filename || 'attachment';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+      },
+      error: (err) => {
+        console.error('Attachment download failed:', err);
+        alert('Failed to download attachment.');
+      }
+    });
   }
 
   recallDocument() {

@@ -16,7 +16,6 @@ type School struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
-
 type User struct {
 	ID           uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	SchoolID     *uuid.UUID `gorm:"type:uuid"`

@@ -3,6 +3,7 @@ package config
 
 import (
 	"bufio"
+	"log"
 	"os"
 	"strings"
 )
@@ -59,6 +60,7 @@ func Load() *Config {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
+		log.Println("[WARNING] JWT_SECRET environment variable is not set. Falling back to default unsafe developer key.")
 		jwtSecret = "my-office-secret-key-12345"
 	}
 

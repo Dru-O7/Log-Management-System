@@ -1,17 +1,30 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = 'http://localhost:8080/api';
+  private apiUrl = environment.apiUrl;
   
   public searchSubject = new BehaviorSubject<string>('');
   public activeTabSubject = new BehaviorSubject<string>('pending_me');
 
   constructor(private http: HttpClient) {}
+
+  downloadDocumentFile(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/documents/${id}/download`, { responseType: 'blob' });
+  }
+
+  previewDocumentFile(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/documents/${id}/preview-pdf`, { responseType: 'blob' });
+  }
+
+  downloadAttachmentFile(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/attachments/${id}/download`, { responseType: 'blob' });
+  }
 
   getUsers() {
     return this.http.get<any[]>(`${this.apiUrl}/users`);
