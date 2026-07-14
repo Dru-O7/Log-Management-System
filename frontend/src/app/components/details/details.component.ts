@@ -22,6 +22,8 @@ export class DetailsComponent implements OnInit {
   selectedUser: string = '';
   users: any[] = [];
   documentTypes: any[] = [];
+  submissions: any[] = [];
+  
 
   selectedFile: File | null = null;
   replaceError: string = '';
@@ -97,6 +99,21 @@ export class DetailsComponent implements OnInit {
         this.document = res.document;
         this.history = res.history;
         this.pdfCacheBuster = Date.now();
+        
+        if (this.document.Category === 'Assignment Broadcast') {
+          this.loadSubmissions(id);
+        }
+
+        if (this.document.FilePath) {
+          this.api.previewDocumentFile(this.document.ID).subscribe({
+          next: (blob: Blob) => {
+            const objectUrl = URL.createObjectURL(blob);
+            this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+          },
+          error: (err) => {
+            console.error('Failed to load PDF preview:', err);
+          }
+        });
 
         const token = this.auth.getToken();
         let url = '';
@@ -126,6 +143,45 @@ export class DetailsComponent implements OnInit {
       `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}`,
       '_blank',
     );
+  }
+
+  submitResponse() {
+    if (!this.selectedFile) {
+      this.replaceError = 'Please select a file to submit.';
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', this.selectedFile);
+    formData.append('uploader_id', this.currentUser.ID || this.currentUser.id);
+    // Student submitting responds to the Teacher who created the broadcast
+    formData.append('target_owner_ids', this.document.UploaderID);
+    formData.append('target_class', this.currentUser.ClassSection || 'All');
+    formData.append('title', `Submission for ${this.document.Title}`);
+    formData.append('description', this.replaceRemarks || 'Assignment Submission');
+    formData.append('category', 'Assignment');
+    formData.append('priority', 'Normal');
+    formData.append('ref_document_id', this.document.ID);
+
+    this.loading = true;
+    this.api.uploadDocument(formData).subscribe({
+      next: () => {
+        this.loading = false;
+        this.replaceError = '';
+        this.replaceRemarks = '';
+        this.selectedFile = null;
+        alert('Assignment response submitted successfully!');
+        this.loadSubmissions(this.document.ID); // Reload if needed
+      },
+      error: (err) => {
+        console.error('Failed to submit response:', err);
+        this.loading = false;
+        this.replaceError = err.error?.error || 'Failed to submit response.';
+      }
+    });
+  }
+
+  takeAction(action: string) {
+    this.executeSubmitAction(action, '');
   }
 
   submitAction(action: string) {
@@ -178,6 +234,15 @@ export class DetailsComponent implements OnInit {
           );
         },
       });
+  }
+
+  loadSubmissions(id: string) {
+    this.api.getSubmissions(id).subscribe({
+      next: (res) => {
+        this.submissions = res || [];
+      },
+      error: (err) => console.error('Failed to load submissions:', err)
+    });
   }
 
   onFileSelected(event: any) {
