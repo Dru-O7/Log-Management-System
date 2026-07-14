@@ -94,14 +94,13 @@ export class DetailsComponent implements OnInit {
         this.pdfCacheBuster = Date.now();
         
         const token = this.auth.getToken();
-        const url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
-        this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-
-        if (this.isDocx(this.document.Filename)) {
-          setTimeout(() => {
-            this.renderDocxPreview();
-          }, 100);
+        let url = '';
+        if (this.isPdf(this.document.Filename)) {
+          url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
+        } else if (this.isDocx(this.document.Filename) || this.isDoc(this.document.Filename)) {
+          url = `http://localhost:8080/api/documents/${this.document.ID}/preview-pdf?token=${token}&cb=${this.pdfCacheBuster}`;
         }
+        this.safePdfUrl = url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
         this.loading = false;
       },
       error: (err) => {
@@ -170,45 +169,8 @@ export class DetailsComponent implements OnInit {
     return filename ? filename.toLowerCase().endsWith('.docx') : false;
   }
 
-  renderDocxPreview() {
-    if (!this.document) return;
-    const token = this.auth.getToken();
-    const url = `http://localhost:8080/api/documents/${this.document.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
-    
-    fetch(url)
-      .then(response => response.blob())
-      .then(blob => {
-        const container = document.getElementById('docx-container');
-        if (container) {
-          container.innerHTML = '';
-          import('docx-preview').then(docx => {
-            docx.renderAsync(blob, container, undefined, {
-              className: 'docx-rendered',
-              inWrapper: true,
-              ignoreWidth: true,
-              ignoreHeight: true,
-              ignoreFonts: false,
-              breakPages: false,
-              debug: false,
-              trimXmlDeclaration: true,
-              useBase64URL: true,
-              renderHeaders: false,
-              renderFooters: false,
-              renderFootnotes: false,
-              renderEndnotes: false,
-              experimental: false
-            }).catch(err => {
-              console.error('Docx render error:', err);
-              container.innerHTML = `<div class="flex items-center justify-center h-full text-rose-500 font-semibold p-6 text-center border-2 border-dashed border-rose-200 rounded-xl bg-rose-50/50">
-                <p>Failed to render preview. The document might be too large or complex for the browser previewer. Please use the download button below to view it natively.</p>
-              </div>`;
-            });
-          });
-        }
-      })
-      .catch(err => {
-        console.error('Error fetching docx:', err);
-      });
+  isDoc(filename: string): boolean {
+    return filename ? filename.toLowerCase().endsWith('.doc') : false;
   }
 
   getPdfUrl(): SafeResourceUrl {
@@ -250,8 +212,8 @@ export class DetailsComponent implements OnInit {
           this.loadDetails(this.document.ID);
         }
       },
-      error: () => {
-        this.replaceError = 'Failed to resubmit document.';
+      error: (err) => {
+        this.replaceError = err.error?.error || 'Failed to resubmit document.';
       }
     });
   }
@@ -304,7 +266,7 @@ export class DetailsComponent implements OnInit {
         this.loadDetails(this.document.ID);
       },
       error: (err) => {
-        this.attachmentError = 'Failed to upload attachment.';
+        this.attachmentError = err.error?.error || 'Failed to upload attachment.';
       }
     });
   }

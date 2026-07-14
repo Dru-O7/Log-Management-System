@@ -50,7 +50,7 @@ func (h *Handler) SendManualEmail(c echo.Context) error {
 	}
 
 	cfg := config.Load()
-	if cfg.SMTPHost == "" || cfg.SMTPUser == "" {
+	if cfg.SMTPHost == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "SMTP server is not configured in backend .env file"})
 	}
 

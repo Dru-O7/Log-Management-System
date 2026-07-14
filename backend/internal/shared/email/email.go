@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
+	"os"
 	"strings"
 	"time"
 
@@ -26,8 +27,8 @@ func SendNotificationEmail(db *gorm.DB, notifID uuid.UUID) {
 	}
 
 	cfg := config.Load()
-	if cfg.SMTPHost == "" || cfg.SMTPUser == "" {
-		log.Println("[Email Service] SMTP host or user is not configured. Skipping email sending.")
+	if cfg.SMTPHost == "" {
+		log.Println("[Email Service] SMTP host is not configured. Skipping email sending.")
 		return
 	}
 
@@ -118,6 +119,20 @@ func SendNotificationEmail(db *gorm.DB, notifID uuid.UUID) {
 }
 
 func SendMail(cfg *config.Config, to []string, subject, body string) error {
+	if cfg.SMTPHost == "mock" || cfg.SMTPHost == "" {
+		// Mock Sandbox Mode
+		log.Printf("\n========================================\n[MOCK EMAIL SENT]\nTo: %s\nSubject: %s\nBody: %s\n========================================\n", strings.Join(to, ", "), subject, body)
+		
+		// Write to a local log file for verification
+		f, err := os.OpenFile("sent_emails.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err == nil {
+			defer f.Close()
+			logEntry := fmt.Sprintf("[%s] To: %s | Subject: %s\nBody:\n%s\n----------------------------------------\n", time.Now().Format(time.RFC3339), strings.Join(to, ", "), subject, body)
+			f.WriteString(logEntry)
+		}
+		return nil
+	}
+
 	header := make(map[string]string)
 	header["From"] = cfg.SMTPFrom
 	header["To"] = strings.Join(to, ",")

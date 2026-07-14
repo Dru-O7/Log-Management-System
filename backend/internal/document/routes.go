@@ -16,6 +16,7 @@ func RegisterRoutes(g *echo.Group, handler *Handler, jwtSecret []byte) {
 	r.GET("/document-types", handler.GetDocumentTypes)
 	r.GET("/documents/:id", handler.GetDetails)
 	r.GET("/documents/:id/download", handler.Download)
+	r.GET("/documents/:id/preview-pdf", handler.PreviewPDF)
 	r.GET("/attachments/:id/download", handler.DownloadAttachment)
 	r.PUT("/documents/:id/replace", handler.Replace)
 	r.POST("/documents/:id/action", handler.TakeAction)

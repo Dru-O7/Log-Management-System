@@ -1,6 +1,7 @@
 package document
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -118,6 +119,56 @@ func (h *Handler) Download(c echo.Context) error {
 		filePath = absPath
 	}
 
+	return c.File(filePath)
+}
+
+func (h *Handler) PreviewPDF(c echo.Context) error {
+	log.Printf("[Preview Handler] Request received for previewing document")
+	authenticatedUserIDStr := c.Get("user_id").(string)
+	userID, _ := uuid.Parse(authenticatedUserIDStr)
+
+	idStr := c.Param("id")
+	docID, err := uuid.Parse(idStr)
+	if err != nil {
+		log.Printf("[Preview Handler] Invalid document ID: %s", idStr)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid document ID"})
+	}
+
+	log.Printf("[Preview Handler] Calling service GetPreviewPDFPath for doc ID %s, user ID %s", docID, userID)
+	filePath, isTemp, err := h.service.GetPreviewPDFPath(docID, userID)
+	if err != nil {
+		log.Printf("[Preview Handler] GetPreviewPDFPath failed for doc ID %s: %v", docID, err)
+		if err.Error() == "you are not authorized to view or access this document" {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	log.Printf("[Preview Handler] PDF file path resolved: %s (isTemp: %t)", filePath, isTemp)
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		log.Printf("[Preview Handler] Resolved PDF file path does not exist on disk: %s", filePath)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "PDF file not found on disk"})
+	}
+
+	absPath, absErr := filepath.Abs(filePath)
+	if absErr == nil {
+		filePath = absPath
+	}
+
+	// If it is a temporary file, delete the temporary directory after the response is sent.
+	if isTemp {
+		defer func() {
+			tempDir := filepath.Dir(filePath)
+			log.Printf("[Preview Handler] Deferred Cleanup: Removing temporary directory %s", tempDir)
+			if err := os.RemoveAll(tempDir); err != nil {
+				log.Printf("[Preview Handler] Deferred Cleanup warning: failed to remove temp directory %s: %v", tempDir, err)
+			}
+		}()
+	}
+
+	log.Printf("[Preview Handler] Streaming PDF: serving %s with Content-Type: application/pdf", filePath)
+	c.Response().Header().Set("Content-Type", "application/pdf")
 	return c.File(filePath)
 }
 

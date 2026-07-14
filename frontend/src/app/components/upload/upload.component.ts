@@ -137,7 +137,7 @@ export class UploadComponent implements OnInit {
       error: (err) => {
         console.error('Failed to upload:', err);
         this.loading = false;
-        this.error = 'Failed to upload document. Please try again.';
+        this.error = err.error?.error || 'Failed to upload document. Please try again.';
       }
     });
   }

@@ -16,6 +16,7 @@ import (
 	"math"
 	"mime/multipart"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ type Service interface {
 	List(userID uuid.UUID, search string) ([]DocumentResponse, error)
 	GetDetails(docID, authenticatedUserID uuid.UUID) (*DocumentDetailsResponse, error)
 	GetFilePathForDownload(docID, authenticatedUserID uuid.UUID) (string, error)
+	GetPreviewPDFPath(docID, authenticatedUserID uuid.UUID) (string, bool, error)
 	Replace(docID, authenticatedUserID, targetOwnerID uuid.UUID, title, description, category, tags, priority, direction string, fileHeader *multipart.FileHeader, remarks string) (*DocumentResponse, error)
 	TakeAction(docID, authenticatedUserID uuid.UUID, req ActionRequest) (*DocumentResponse, error)
 	Recall(docID, authenticatedUserID uuid.UUID) (*DocumentResponse, error)
@@ -60,27 +62,37 @@ func NewService(repo Repository, uploadsDir string) Service {
 	}
 	return &service{repo: repo, uploadsDir: uploadsDir}
 }
-
-func (s *service) Upload(uploaderID, targetOwnerID uuid.UUID, title, description, category, tags, priority, direction, targetClass string, fileHeader *multipart.FileHeader) (*DocumentResponse, error) {
+func (s *service) saveFile(fileHeader *multipart.FileHeader, prefix string) (string, error) {
 	src, err := fileHeader.Open()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer src.Close()
 
-	uniquePrefix := fmt.Sprintf("%d_", time.Now().Unix())
-	safeFilename := uniquePrefix + filepath.Base(fileHeader.Filename)
+	uniquePrefix := fmt.Sprintf("%d_%s", time.Now().UnixNano(), prefix)
+	originalFilename := filepath.Base(fileHeader.Filename)
+	safeFilename := uniquePrefix + originalFilename
 	destPath := filepath.Join(s.uploadsDir, safeFilename)
 
 	dst, err := os.Create(destPath)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
+	defer dst.Close()
+
 	if _, err = io.Copy(dst, src); err != nil {
-		dst.Close()
+		return "", err
+	}
+
+	return safeFilename, nil
+}
+
+func (s *service) Upload(uploaderID, targetOwnerID uuid.UUID, title, description, category, tags, priority, direction, targetClass string, fileHeader *multipart.FileHeader) (*DocumentResponse, error) {
+	processedFilename, err := s.saveFile(fileHeader, "")
+	if err != nil {
 		return nil, err
 	}
-	dst.Close()
+	destPath := filepath.Join(s.uploadsDir, processedFilename)
 
 	// Backup original clean (unsigned) file
 	if err := copyFile(destPath, destPath+".original"); err != nil {
@@ -129,13 +141,14 @@ func (s *service) Upload(uploaderID, targetOwnerID uuid.UUID, title, description
 		}
 	}
 
+	displayFilename := fileHeader.Filename
 
 	docID := uuid.New()
 	doc := &models.Document{
 		ID:             docID,
 		SchoolID:       schoolID,
 		DocumentTypeID: docTypeID,
-		Filename:       fileHeader.Filename,
+		Filename:       displayFilename,
 		FilePath:       destPath,
 		UploaderID:     uploaderID,
 		CurrentOwnerID: assignedOwnerID,
@@ -274,6 +287,90 @@ func (s *service) GetFilePathForDownload(docID, authenticatedUserID uuid.UUID) (
 	return doc.FilePath, nil
 }
 
+func (s *service) GetPreviewPDFPath(docID, authenticatedUserID uuid.UUID) (string, bool, error) {
+	log.Printf("[Preview Service] Fetching document %s for user %s", docID, authenticatedUserID)
+	doc, err := s.repo.GetByID(docID)
+	if err != nil {
+		log.Printf("[Preview Service] Document %s not found", docID)
+		return "", false, errors.New("document not found")
+	}
+
+	if err := s.authorizeDocAccess(doc, authenticatedUserID); err != nil {
+		log.Printf("[Preview Service] User %s unauthorized for document %s", authenticatedUserID, docID)
+		return "", false, err
+	}
+
+	ext := strings.ToLower(filepath.Ext(doc.FilePath))
+	if ext == ".pdf" {
+		log.Printf("[Preview Service] Document %s is already a PDF, returning original file path: %s", docID, doc.FilePath)
+		return doc.FilePath, false, nil
+	}
+
+	if ext != ".docx" && ext != ".doc" {
+		log.Printf("[Preview Service] Document %s has unsupported preview extension: %s", docID, ext)
+		return "", false, fmt.Errorf("unsupported file type for preview: %s", ext)
+	}
+
+	log.Printf("[Preview Service] Converting document %s from %s to PDF", docID, ext)
+
+	// Create temp directory
+	tempDir, err := os.MkdirTemp("", "doc-preview-*")
+	if err != nil {
+		log.Printf("[Preview Service] Failed to create temp directory: %v", err)
+		return "", false, fmt.Errorf("failed to create temporary directory for preview: %v", err)
+	}
+
+	// Attempt to use LibreOffice to convert
+	libreOfficePath := "/Applications/LibreOffice.app/Contents/MacOS/soffice"
+	if _, err := os.Stat(libreOfficePath); os.IsNotExist(err) {
+		libreOfficePath = "soffice" // Fallback to PATH
+	}
+
+	// Run conversion command: soffice --headless --convert-to pdf --outdir <tempDir> <doc.FilePath>
+	log.Printf("[Preview Service] Running command: %s --headless --convert-to pdf --outdir %s %s", libreOfficePath, tempDir, doc.FilePath)
+	cmd := exec.Command(libreOfficePath, "--headless", "--convert-to", "pdf", "--outdir", tempDir, doc.FilePath)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	
+	if err := cmd.Run(); err != nil {
+		os.RemoveAll(tempDir)
+		log.Printf("[Preview Service] PDF conversion failed: %v, stderr: %s", err, stderr.String())
+		return "", false, fmt.Errorf("conversion to PDF failed: please make sure LibreOffice is installed (run: brew install --cask libreoffice). Error details: %v, Stderr: %s", err, stderr.String())
+	}
+
+	// LibreOffice outputs pdf file with the same base name in output folder
+	originalBase := filepath.Base(doc.FilePath)
+	pdfBase := strings.TrimSuffix(originalBase, ext) + ".pdf"
+	generatedPdfPath := filepath.Join(tempDir, pdfBase)
+
+	log.Printf("[Preview Service] Verification check: checking if converted file exists at %s", generatedPdfPath)
+	if _, err := os.Stat(generatedPdfPath); os.IsNotExist(err) {
+		os.RemoveAll(tempDir)
+		log.Printf("[Preview Service] PDF was not created after conversion")
+		return "", false, fmt.Errorf("PDF was not created after conversion")
+	}
+
+	// Dynamic Signature Stamping overlay for Word documents (.docx/.doc)
+	log.Printf("[Preview Service] Fetching workflow history for document %s to stamp signatures", docID)
+	history, histErr := s.repo.GetHistoryByDocumentID(docID)
+	if histErr == nil {
+		sigIndex := 0
+		for _, item := range history {
+			if item.Signature != "" {
+				actorName := item.Actor.Name
+				log.Printf("[Preview Service] Overlaying signature token %s for actor %s at index %d on converted PDF", item.Signature, actorName, sigIndex)
+				if err := stampTextSignatureOnPDF(generatedPdfPath, actorName, item.Signature, item.Remarks, sigIndex); err != nil {
+					log.Printf("[Preview Service] Error overlaying dynamic signature: %v", err)
+				}
+				sigIndex++
+			}
+		}
+	}
+
+	log.Printf("[Preview Service] Conversion and signature stamping succeeded, returning temp PDF path: %s", generatedPdfPath)
+	return generatedPdfPath, true, nil
+}
+
 func (s *service) Replace(docID, authenticatedUserID, targetOwnerID uuid.UUID, title, description, category, tags, priority, direction string, fileHeader *multipart.FileHeader, remarks string) (*DocumentResponse, error) {
 	oldDoc, err := s.repo.GetByID(docID)
 	if err != nil {
@@ -310,25 +407,15 @@ func (s *service) Replace(docID, authenticatedUserID, targetOwnerID uuid.UUID, t
 	fileReplaced := false
 
 	if fileHeader != nil {
-		src, err := fileHeader.Open()
-		if err == nil {
-			defer src.Close()
-			uniquePrefix := fmt.Sprintf("%d_", time.Now().Unix())
-			safeFilename := uniquePrefix + filepath.Base(fileHeader.Filename)
-			destPath = filepath.Join(s.uploadsDir, safeFilename)
-
-			dst, err := os.Create(destPath)
-			if err == nil {
-				if _, err = io.Copy(dst, src); err == nil {
-					filename = fileHeader.Filename
-					fileReplaced = true
-				}
-				dst.Close()
-				if fileReplaced {
-					_ = copyFile(destPath, destPath+".original")
-				}
-			}
+		processedFilename, err := s.saveFile(fileHeader, "")
+		if err != nil {
+			return nil, err
 		}
+		
+		filename = fileHeader.Filename
+		destPath = filepath.Join(s.uploadsDir, processedFilename)
+		fileReplaced = true
+		_ = copyFile(destPath, destPath+".original")
 	} else {
 		// No new file uploaded: copy the previous clean original file
 		uniquePrefix := fmt.Sprintf("%d_resub_", time.Now().Unix())
@@ -972,30 +1059,18 @@ func (s *service) AddAttachment(docID, authenticatedUserID uuid.UUID, fileHeader
 		return nil, err
 	}
 
-	src, err := fileHeader.Open()
+	processedFilename, err := s.saveFile(fileHeader, "att_")
 	if err != nil {
 		return nil, err
 	}
-	defer src.Close()
-
-	uniquePrefix := fmt.Sprintf("%d_att_", time.Now().Unix())
-	safeFilename := uniquePrefix + filepath.Base(fileHeader.Filename)
-	destPath := filepath.Join(s.uploadsDir, safeFilename)
-
-	dst, err := os.Create(destPath)
-	if err != nil {
-		return nil, err
-	}
-	defer dst.Close()
-
-	if _, err = io.Copy(dst, src); err != nil {
-		return nil, err
-	}
+	destPath := filepath.Join(s.uploadsDir, processedFilename)
+	
+	displayFilename := fileHeader.Filename
 
 	att := &models.Attachment{
 		ID:         uuid.New(),
 		DocumentID: doc.ID,
-		Filename:   fileHeader.Filename,
+		Filename:   displayFilename,
 		FilePath:   destPath,
 		UploadedBy: authenticatedUserID,
 		CreatedAt:  time.Now(),

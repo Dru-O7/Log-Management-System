@@ -183,24 +183,24 @@ export class AppComponent implements OnInit, OnDestroy {
     this.showComposeEmailModal = false;
   }
  
-  sendEmail(event: Event) {
+  openMailto(event: Event) {
     event.preventDefault();
-    this.sendingEmail = true;
-    this.emailSendError = '';
-    this.emailSendSuccess = '';
-    this.api.sendManualEmail(this.composeTo, this.composeSubject, this.composeBody).subscribe({
-      next: (res) => {
-        this.sendingEmail = false;
-        this.emailSendSuccess = 'Email sent successfully via SMTP!';
-        setTimeout(() => {
-          this.closeComposeEmailModal();
-        }, 1500);
-      },
-      error: (err) => {
-        this.sendingEmail = false;
-        this.emailSendError = err.error?.error || 'Failed to send email. Check SMTP settings.';
-      }
-    });
+    if (!this.composeTo) return;
+    
+    let mailtoUrl = `mailto:${this.composeTo}`;
+    const params: string[] = [];
+    if (this.composeSubject) {
+      params.push(`subject=${encodeURIComponent(this.composeSubject)}`);
+    }
+    if (this.composeBody) {
+      params.push(`body=${encodeURIComponent(this.composeBody)}`);
+    }
+    if (params.length > 0) {
+      mailtoUrl += `?${params.join('&')}`;
+    }
+    
+    window.location.href = mailtoUrl;
+    this.closeComposeEmailModal();
   }
 
   logout() {
