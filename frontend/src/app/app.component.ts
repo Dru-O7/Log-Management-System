@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { RouterOutlet, Router } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { ApiService } from './services/api.service';
@@ -137,6 +137,19 @@ export class AppComponent implements OnInit, OnDestroy {
 
   toggleMobileMenu() {
     this.showMobileMenu = !this.showMobileMenu;
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.showProfileDropdown = false;
+    this.showNotificationsDropdown = false;
+  }
+
+  onNotificationClick(n: any) {
+    if (n.DocumentID) {
+      this.router.navigate(['/details', n.DocumentID]);
+    }
+    this.showNotificationsDropdown = false;
   }
 
   logout() {

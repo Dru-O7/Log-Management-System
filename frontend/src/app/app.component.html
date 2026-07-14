@@ -157,7 +157,7 @@
     <div class="flex-1 flex flex-col overflow-hidden h-full bg-[var(--background)]">
       
       <!-- Top Header -->
-      <header class="h-16 bg-[var(--surface)] border-b border-[var(--border)] px-4 md:px-6 flex items-center justify-between z-10 flex-shrink-0">
+      <header class="relative h-16 bg-[var(--surface)] border-b border-[var(--border)] px-4 md:px-6 flex items-center justify-between z-30 flex-shrink-0">
         
         <!-- Mobile Left: Brand & Toggle -->
         <div class="flex items-center gap-2 md:hidden">
@@ -207,7 +207,7 @@
 
             <!-- Notifications Dropdown -->
             <div class="relative">
-              <button class="p-1.5 rounded-lg hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent text-slate-400 relative flex items-center" (click)="toggleNotifications(); showProfileDropdown = false" title="Notifications">
+              <button class="p-1.5 rounded-lg hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent text-slate-400 relative flex items-center" (click)="toggleNotifications(); showProfileDropdown = false; $event.stopPropagation()" title="Notifications">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
                 <span *ngIf="unreadCount > 0" class="absolute top-1 right-1 flex h-2 w-2">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -216,13 +216,15 @@
               </button>
 
               <!-- Notifications Dropdown Panel -->
-              <div *ngIf="showNotificationsDropdown" class="absolute right-0 mt-2 w-80 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg py-2 z-50 text-[var(--text-primary)]">
+              <div *ngIf="showNotificationsDropdown" class="absolute right-0 mt-2 w-80 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg py-2 z-50 text-[var(--text-primary)]" (click)="$event.stopPropagation()">
                 <h4 class="px-4 py-2 border-b border-[var(--border)] text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider m-0">Notifications</h4>
                 <div class="max-h-60 overflow-y-auto">
                   <div *ngIf="notifications.length === 0" class="px-4 py-6 text-xs text-slate-400 text-center">
                     No notifications yet
                   </div>
-                  <div *ngFor="let n of notifications" class="px-4 py-3 hover:bg-[var(--background)] text-xs border-b border-[var(--border)]/20 last:border-0 text-[var(--text-secondary)]">
+                  <div *ngFor="let n of notifications" 
+                       class="px-4 py-3 hover:bg-[var(--background)] text-xs border-b border-[var(--border)]/20 last:border-0 text-[var(--text-secondary)] cursor-pointer"
+                       (click)="onNotificationClick(n); $event.stopPropagation()">
                     <div class="font-semibold mb-0.5">{{ getNotificationText(n) }}</div>
                     <div class="text-[9px] text-slate-400">{{ n.CreatedAt | date:'short' }}</div>
                   </div>
@@ -234,7 +236,7 @@
           <!-- User Profile Dropdown -->
           <div class="relative">
             <button class="flex items-center gap-2 p-1 md:p-1.5 hover:bg-[var(--background)] rounded-lg cursor-pointer transition-all border border-transparent text-left bg-transparent" 
-                    (click)="toggleProfileDropdown(); showNotificationsDropdown = false">
+                    (click)="toggleProfileDropdown(); showNotificationsDropdown = false; $event.stopPropagation()">
               <div class="w-8 h-8 bg-blue-105 dark:bg-blue-950 font-bold text-xs text-blue-750 dark:text-blue-300 rounded-full flex items-center justify-center shadow-inner border border-blue-200/50">
                 {{ (user.Name || user.name || 'U').substring(0,2) }}
               </div>
@@ -248,7 +250,7 @@
             </button>
 
             <!-- User Menu Dropdown Panel -->
-            <div *ngIf="showProfileDropdown" class="absolute right-0 mt-2 w-56 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg py-2.5 z-50 text-[var(--text-primary)]">
+            <div *ngIf="showProfileDropdown" class="absolute right-0 mt-2 w-56 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg py-2.5 z-50 text-[var(--text-primary)]" (click)="$event.stopPropagation()">
               <div class="px-4 py-2 border-b border-[var(--border)] mb-1">
                 <div class="text-xs font-bold text-[var(--text-primary)]">{{ user.Name || user.name }}</div>
                 <div class="text-[10px] text-[var(--text-muted)] truncate">{{ user.Email || user.email }}</div>
@@ -259,7 +261,7 @@
               <button class="w-full text-left px-4 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent" (click)="selectTab('pending_me'); showProfileDropdown = false">Dashboard Home</button>
               <button class="w-full text-left px-4 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--background)] hover:text-[var(--text-primary)] cursor-pointer border-0 bg-transparent" (click)="router.navigate(['/upload']); showProfileDropdown = false">Submit Document</button>
               <hr class="border-[var(--border)] my-1.5">
-              <button class="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer font-semibold border-0 bg-transparent" (click)="logout(); showProfileDropdown = false">Logout</button>
+              <button class="w-full text-left px-4 py-2 text-xs text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer font-semibold border-0 bg-transparent" (click)="logout(); showProfileDropdown = false">Logout</button>
             </div>
           </div>
 

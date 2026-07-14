@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"office-file-sharing/backend/internal/shared/email"
 	"office-file-sharing/backend/internal/shared/models"
 
 	"github.com/google/uuid"
@@ -188,6 +189,8 @@ func (s *service) Upload(uploaderID, targetOwnerID uuid.UUID, title, description
 	}
 	if err := s.repo.(*repository).db.Create(newNotification).Error; err != nil {
 		log.Printf("Warning: Failed to queue notification: %v", err)
+	} else {
+		go email.SendNotificationEmail(s.repo.(*repository).db, newNotification.ID)
 	}
 
 	historyRemarks := "Document submitted for approval"
@@ -668,7 +671,9 @@ func (s *service) TakeAction(docID, authenticatedUserID uuid.UUID, req ActionReq
 		Payload:     notifPayload,
 		Status:      "pending",
 	}
-	_ = s.repo.(*repository).db.Create(newNotification).Error
+	if err := s.repo.(*repository).db.Create(newNotification).Error; err == nil {
+		go email.SendNotificationEmail(s.repo.(*repository).db, newNotification.ID)
+	}
 
 	history := &models.WorkflowHistory{
 		ID:         uuid.New(),

@@ -12,6 +12,7 @@ import (
 	"office-file-sharing/backend/internal/document"
 	"office-file-sharing/backend/internal/shared/config"
 	"office-file-sharing/backend/internal/shared/db"
+	"office-file-sharing/backend/internal/shared/email"
 	"office-file-sharing/backend/internal/shared/models"
 	"office-file-sharing/backend/internal/user"
 
@@ -175,8 +176,10 @@ func startSLAScheduler(db *gorm.DB) {
 				Payload:     notifPayload,
 				Status:      "pending",
 			}
-			db.Create(&warningNotif)
-
+			if err := db.Create(&warningNotif).Error; err == nil {
+				go email.SendNotificationEmail(db, warningNotif.ID)
+			}
+ 
 			principalNotif := models.Notification{
 				ID:          uuid.New(),
 				SchoolID:    doc.SchoolID,
@@ -187,7 +190,9 @@ func startSLAScheduler(db *gorm.DB) {
 				Payload:     fmt.Sprintf(`{"document_title": "%s", "message": "Escalated document %s requires your attention."}`, doc.Title, doc.UniqueNumber),
 				Status:      "pending",
 			}
-			db.Create(&principalNotif)
+			if err := db.Create(&principalNotif).Error; err == nil {
+				go email.SendNotificationEmail(db, principalNotif.ID)
+			}
 
 			log.Printf("SLA Worker: Auto-escalated document %s (%s) to Principal %s due to SLA breach.", doc.UniqueNumber, doc.Title, principal.Name)
 		}

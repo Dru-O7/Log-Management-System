@@ -6,8 +6,13 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	JWTSecret   string
+	DatabaseURL  string
+	JWTSecret    string
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUser     string
+	SMTPPassword string
+	SMTPFrom     string
 }
 
 // Load reads and parses configuration fields
@@ -22,8 +27,26 @@ func Load() *Config {
 		jwtSecret = "my-office-secret-key-12345"
 	}
 
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
+	if smtpPort == "" {
+		smtpPort = "587"
+	}
+
+	smtpUser := os.Getenv("SMTP_USER")
+	smtpPass := os.Getenv("SMTP_PASS")
+	smtpFrom := os.Getenv("SMTP_FROM")
+	if smtpFrom == "" {
+		smtpFrom = "no-reply@school.edu"
+	}
+
 	return &Config{
-		DatabaseURL: dbURL,
-		JWTSecret:   jwtSecret,
+		DatabaseURL:  dbURL,
+		JWTSecret:    jwtSecret,
+		SMTPHost:     smtpHost,
+		SMTPPort:     smtpPort,
+		SMTPUser:     smtpUser,
+		SMTPPassword: smtpPass,
+		SMTPFrom:     smtpFrom,
 	}
 }
