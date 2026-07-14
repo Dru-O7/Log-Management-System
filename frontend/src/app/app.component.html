@@ -2,14 +2,14 @@
   <div class="flex h-screen overflow-hidden bg-[var(--background)] font-sans">
     
     <!-- Left Sidebar (Desktop Only) -->
-    <aside class="hidden md:flex flex-col w-64 bg-[var(--surface)] border-r border-[var(--border)] transition-all duration-300 flex-shrink-0" [class.md:w-20]="isSidebarCollapsed">
+    <aside class="hidden md:flex flex-col w-64 bg-[var(--surface)] border-r border-[var(--border)] transition-all duration-300 flex-shrink-0" [ngClass]="isSidebarCollapsed ? 'md:w-20' : ''">
       <div class="h-16 border-b border-[var(--border)] flex items-center transition-all duration-300 overflow-hidden"
            [ngClass]="isSidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'">
         <div class="flex items-center gap-2 cursor-pointer transition-all duration-200" (click)="navigateToDashboard()" *ngIf="!isSidebarCollapsed">
           <img src="https://samarthx.du.ac.in/user/images/g5_hydrogen/samxw-removebg-preview.png" alt="SamarthX Logo" class="h-16 w-auto object-contain">
         </div>
         <!-- Collapse/Expand button -->
-        <button class="p-1.5 rounded-lg hover:bg-[var(--background)] text-slate-500 cursor-pointer border-0 bg-transparent flex items-center" (click)="toggleSidebar()">
+        <button class="p-1.5 rounded-lg hover:bg-[var(--background)] cursor-pointer border-0 bg-transparent flex items-center transition-colors" [ngClass]="isSidebarCollapsed ? 'text-[var(--primary)] bg-[var(--primary-light)]' : 'text-slate-500'" (click)="toggleSidebar()">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></svg>
         </button>
       </div>
@@ -23,11 +23,8 @@
         </div>
 
         <!-- Dashboard Home -->
-        <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                [class.bg-[var(--primary-light)]]="isActiveDashboard() && activeTab !== 'archived_closed'"
-                [class.text-[var(--primary-active)]]="isActiveDashboard() && activeTab !== 'archived_closed'"
-                [class.text-[var(--text-secondary)]]="!isActiveDashboard() || activeTab === 'archived_closed'"
-                [class.hover:bg-[var(--background)]]="!isActiveDashboard() || activeTab === 'archived_closed'"
+        <button class="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent"
+                [ngClass]="isActiveDashboard() && activeTab !== 'archived_closed' ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : 'border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40'"
                 (click)="navigateToDashboard()"
                 [title]="isSidebarCollapsed ? 'Dashboard' : ''">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>
@@ -38,11 +35,8 @@
         <ng-container *ngIf="(user.Role || user.role) === 'Admin' || (user.Role || user.role) === 'SuperAdmin'">
           
           <!-- User Management -->
-          <button class="w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/admin') && activeAdminSection === 'users'"
-                  [class.text-[var(--primary-active)]]="router.url.startsWith('/admin') && activeAdminSection === 'users'"
-                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'users'"
-                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'users'"
+          <button class="w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent"
+                  [ngClass]="router.url.startsWith('/admin') && activeAdminSection === 'users' ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : 'border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40'"
                   (click)="navigateToAdminSection('users')"
                   [title]="isSidebarCollapsed ? 'User Management' : ''">
             <div class="flex items-center gap-3 min-w-0">
@@ -53,42 +47,33 @@
           </button>
 
           <!-- School Config -->
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/admin') && activeAdminSection === 'schools'"
-                  [class.text-[var(--primary-active)]]="router.url.startsWith('/admin') && activeAdminSection === 'schools'"
-                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'schools'"
-                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'schools'"
+          <button class="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent"
+                  [ngClass]="router.url.startsWith('/admin') && activeAdminSection === 'schools' ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : 'border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40'"
                   (click)="navigateToAdminSection('schools')"
                   [title]="isSidebarCollapsed ? 'School Dashboard' : ''">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><path d="m4 6 8-4 8 4M18 10v9M6 10v9M12 10v9M2 22h20"/></svg>
-            <span *ngIf="!isSidebarCollapsed">School Dashboard</span>
+            <span *ngIf="!isSidebarCollapsed">School Config</span>
           </button>
 
           <!-- Document Types Config -->
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/admin') && activeAdminSection === 'doctypes'"
-                  [class.text-[var(--primary-active)]]="router.url.startsWith('/admin') && activeAdminSection === 'doctypes'"
-                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'doctypes'"
-                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/admin') || activeAdminSection !== 'doctypes'"
+          <button class="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent"
+                  [ngClass]="router.url.startsWith('/admin') && activeAdminSection === 'doctypes' ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : 'border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40'"
                   (click)="navigateToAdminSection('doctypes')"
                   [title]="isSidebarCollapsed ? 'Department Dashboard' : ''">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4M8 5h.01M8 9h.01M8 13h.01M8 17h.01M12 5h.01M12 9h.01M12 13h.01M12 17h.01M16 5h.01M16 9h.01M16 13h.01M16 17h.01"/></svg>
-            <span *ngIf="!isSidebarCollapsed">Department Dashboard</span>
+            <span *ngIf="!isSidebarCollapsed">Department Config</span>
           </button>
         </ng-container>
 
         <!-- Section: Modules / Document Folders -->
-        <div class="pt-4" *ngIf="documentTypes && documentTypes.length > 0">
-          <div class="px-3 mb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
+        <div class="pt-3" *ngIf="documentTypes && documentTypes.length > 0">
+          <div class="px-3 mb-1.5 text-[9px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
             Document Modules
           </div>
           
           <button *ngFor="let dt of documentTypes"
-                  class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-[var(--primary-light)]]="router.url.startsWith('/dashboard') && selectedFolder === dt.Name"
-                  [class.text-[var(--primary-active)]]="router.url.startsWith('/dashboard') && selectedFolder === dt.Name"
-                  [class.text-[var(--text-secondary)]]="!router.url.startsWith('/dashboard') || selectedFolder !== dt.Name"
-                  [class.hover:bg-[var(--background)]]="!router.url.startsWith('/dashboard') || selectedFolder !== dt.Name"
+                  class="w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent"
+                  [ngClass]="router.url.startsWith('/dashboard') && selectedFolder === dt.Name ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : 'border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40'"
                   (click)="selectSidebarFolder(dt.Name)"
                   [title]="isSidebarCollapsed ? dt.Name : ''">
             <!-- Dynamic Category Folder Lucide SVG Icons -->
@@ -107,29 +92,23 @@
         </div>
 
         <!-- Section: User Workspace -->
-        <div class="pt-4">
-          <div class="px-3 mb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
+        <div class="pt-3">
+          <div class="px-3 mb-1.5 text-[9px] font-extrabold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
             User Workspace
           </div>
           
           <!-- Submit Document -->
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-[var(--primary-light)]]="router.url === '/upload'"
-                  [class.text-[var(--primary-active)]]="router.url === '/upload'"
-                  [class.text-[var(--text-secondary)]]="router.url !== '/upload'"
-                  [class.hover:bg-[var(--background)]]="router.url !== '/upload'"
+          <button class="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent"
+                  [ngClass]="router.url === '/upload' ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : 'border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40'"
                   (click)="router.navigate(['/upload'])"
                   [title]="isSidebarCollapsed ? 'Submit Document' : ''">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0 text-emerald-500"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0 text-emerald-650"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
             <span *ngIf="!isSidebarCollapsed">Submit Document</span>
           </button>
 
           <!-- Audit History Page -->
-          <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent"
-                  [class.bg-[var(--primary-light)]]="router.url === '/history'"
-                  [class.text-[var(--primary-active)]]="router.url === '/history'"
-                  [class.text-[var(--text-secondary)]]="router.url !== '/history'"
-                  [class.hover:bg-[var(--background)]]="router.url !== '/history'"
+          <button class="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent"
+                  [ngClass]="router.url === '/history' ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : 'border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40'"
                   (click)="router.navigate(['/history'])"
                   [title]="isSidebarCollapsed ? 'Audit History' : ''">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M12 2a10 10 0 0 0-7.38 3.24L3 7v-5"/></svg>
@@ -137,10 +116,49 @@
           </button>
         </div>
 
+        <!-- Section: Utilities -->
+        <div class="mt-4 pt-4 border-t border-[var(--border)]/50">
+          <div class="px-3 mb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider" *ngIf="!isSidebarCollapsed">
+            Utilities
+          </div>
+
+          <!-- Compose Email -->
+          <button class="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                  (click)="openComposeEmailModal(); showProfileDropdown = false; showNotificationsDropdown = false; $event.stopPropagation()"
+                  [title]="isSidebarCollapsed ? 'Compose Email' : ''">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <span *ngIf="!isSidebarCollapsed">Compose Email</span>
+          </button>
+
+          <!-- Notifications -->
+          <button class="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-r-md transition-all border-0 border-l-4 cursor-pointer text-left bg-transparent border-transparent text-[var(--text-secondary)] hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                  (click)="toggleNotifications(); showProfileDropdown = false; $event.stopPropagation()"
+                  [title]="isSidebarCollapsed ? 'Notifications' : ''">
+            <div class="relative flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5 flex-shrink-0"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span *ngIf="unreadCount > 0" class="absolute top-0 -right-1 flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+            </div>
+            <span *ngIf="!isSidebarCollapsed">Notifications</span>
+          </button>
+        </div>
+
       </nav>
 
       <!-- Sidebar Footer -->
       <div class="p-3 border-t border-[var(--border)] bg-[var(--background)]/30 flex flex-col gap-2">
+        <div *ngIf="!isSidebarCollapsed" class="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]/40 pb-3 mb-1">
+          <div class="w-8 h-8 bg-blue-100 dark:bg-blue-950 font-bold text-xs text-blue-800 dark:text-blue-300 rounded-full flex items-center justify-center border border-blue-200/50 flex-shrink-0">
+            {{ (user.Name || user.name || 'U').substring(0,2) }}
+          </div>
+          <div class="leading-none min-w-0 flex-1">
+            <div class="text-xs font-bold text-[var(--text-primary)] truncate">{{ user.Name || user.name }}</div>
+            <div class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-1 truncate">{{ user.Role || user.role }}</div>
+          </div>
+        </div>
+
         <button class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 border-0 cursor-pointer transition-all text-left bg-transparent" 
                 (click)="logout()"
                 [title]="isSidebarCollapsed ? 'Sign Out' : ''">
