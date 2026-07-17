@@ -49,7 +49,18 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
-	user, err := h.service.CreateUser(req)
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		parsed, err := uuid.Parse(actorSchoolIDStr)
+		if err == nil {
+			actorSchoolID = &parsed
+		}
+	}
+
+	user, err := h.service.CreateUser(req, actorRole, actorSchoolID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -66,7 +77,18 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
-	user, err := h.service.UpdateUser(id, req)
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		parsed, err := uuid.Parse(actorSchoolIDStr)
+		if err == nil {
+			actorSchoolID = &parsed
+		}
+	}
+
+	user, err := h.service.UpdateUser(id, req, actorRole, actorSchoolID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}

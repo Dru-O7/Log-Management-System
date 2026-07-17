@@ -17,14 +17,13 @@ func main() {
 
 	log.Println("Resetting and seeding database accounts...")
 
-	// Clear existing data (cascade will clear users, doctypes, etc. if FKs are set up, but let's be thorough)
-	tx := gormDB.Exec("TRUNCATE TABLE schools CASCADE;")
-	if tx.Error != nil {
-		log.Fatalf("Failed to truncate schools table: %v", tx.Error)
-	}
-	tx = gormDB.Exec("TRUNCATE TABLE users CASCADE;")
-	if tx.Error != nil {
-		log.Fatalf("Failed to truncate users table: %v", tx.Error)
+	// Clear existing data thoroughly across all tables
+	tables := []string{"schools", "users", "document_types", "documents", "workflow_histories", "notifications", "attachments", "document_pending_approvers", "files", "notes"}
+	for _, t := range tables {
+		tx := gormDB.Exec("TRUNCATE TABLE " + t + " CASCADE;")
+		if tx.Error != nil {
+			log.Printf("Warning: failed to truncate table %s (might not exist yet): %v", t, tx.Error)
+		}
 	}
 
 	// 1. Seed Schools
@@ -57,6 +56,7 @@ func main() {
 		{Name: "Neha Reddy", Email: "neha@school.edu", PasswordHash: string(hash), Role: "Teaching staff", SchoolID: &school2.ID, ClassSection: "Department B", Subject: "History"},
 		
 		// Modern School
+		{Name: "Shalini Sen", Email: "shalini@school.edu", PasswordHash: string(hash), Role: "School Admin", SchoolID: &school3.ID},
 		{Name: "Vikram Iyer", Email: "vikram@school.edu", PasswordHash: string(hash), Role: "Teaching staff", SchoolID: &school3.ID, ClassSection: "Department C", Subject: "Mathematics"},
 		{Name: "Meera Menon", Email: "meera@school.edu", PasswordHash: string(hash), Role: "Teaching staff", SchoolID: &school3.ID, ClassSection: "Department D", Subject: "English"},
 		{Name: "Aarav Sharma", Email: "aarav@school.edu", PasswordHash: string(hash), Role: "vocational", SchoolID: &school3.ID, ClassSection: "Department A"},

@@ -147,6 +147,7 @@ The database is pre-seeded with mock users. You can log in on the login screen b
 - **Deepak Singh**: `deepak@school.edu` (Role: Non-teaching)
 
 ### Modern School
+- **Shalini Sen**: `shalini@school.edu` (Role: School Admin)
 - **Vikram Iyer**: `vikram@school.edu` (Role: Teaching Staff - Department C, Mathematics)
 - **Meera Menon**: `meera@school.edu` (Role: Teaching Staff - Department D, English)
 - **Aarav Sharma**: `aarav@school.edu` (Role: Vocational - Department A)

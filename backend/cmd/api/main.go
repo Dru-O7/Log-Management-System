@@ -228,40 +228,48 @@ func seedData(gormDB *gorm.DB) {
 		Role         string
 		ClassSection string
 		Subject      string
+		SchoolSlug   string
 	}
 
 	seedUsers := []seedUser{
-		// 4 vocational
-		{Name: "Aarav Sharma", Email: "aarav@school.edu", Role: "vocational", ClassSection: "Department A"},
-		{Name: "Ananya Iyer", Email: "ananya@school.edu", Role: "vocational", ClassSection: "Department B"},
-		{Name: "Rohan Das", Email: "rohan@school.edu", Role: "vocational", ClassSection: "Department C"},
-		{Name: "Kavya Menon", Email: "kavya@school.edu", Role: "vocational", ClassSection: "Department D"},
-		// 4 Teaching staff
-		{Name: "Priya Patel", Email: "priya@school.edu", Role: "Teaching staff", ClassSection: "Department A", Subject: "Science"},
-		{Name: "Neha Reddy", Email: "neha@school.edu", Role: "Teaching staff", ClassSection: "Department B", Subject: "History"},
-		{Name: "Vikram Iyer", Email: "vikram@school.edu", Role: "Teaching staff", ClassSection: "Department C", Subject: "Mathematics"},
-		{Name: "Meera Menon", Email: "meera@school.edu", Role: "Teaching staff", ClassSection: "Department D", Subject: "English"},
+		// vocational (Modern School)
+		{Name: "Aarav Sharma", Email: "aarav@school.edu", Role: "vocational", ClassSection: "Department A", SchoolSlug: "modern-school"},
+		{Name: "Ananya Iyer", Email: "ananya@school.edu", Role: "vocational", ClassSection: "Department B", SchoolSlug: "modern-school"},
+		{Name: "Rohan Das", Email: "rohan@school.edu", Role: "vocational", ClassSection: "Department C", SchoolSlug: "modern-school"},
+		{Name: "Kavya Menon", Email: "kavya@school.edu", Role: "vocational", ClassSection: "Department D", SchoolSlug: "modern-school"},
+		// Teaching staff
+		{Name: "Priya Patel", Email: "priya@school.edu", Role: "Teaching staff", ClassSection: "Department A", Subject: "Science", SchoolSlug: "greenwood-high"},
+		{Name: "Neha Reddy", Email: "neha@school.edu", Role: "Teaching staff", ClassSection: "Department B", Subject: "History", SchoolSlug: "dps"},
+		{Name: "Vikram Iyer", Email: "vikram@school.edu", Role: "Teaching staff", ClassSection: "Department C", Subject: "Mathematics", SchoolSlug: "modern-school"},
+		{Name: "Meera Menon", Email: "meera@school.edu", Role: "Teaching staff", ClassSection: "Department D", Subject: "English", SchoolSlug: "modern-school"},
 		// School Admins
-		{Name: "Rahul Gupta", Email: "rahul@school.edu", Role: "School Admin"},
-		{Name: "Gaurav Verma", Email: "gaurav@school.edu", Role: "School Admin"},
-		// 1 Admin (school-level admin)
-		{Name: "System Administrator", Email: "admin@school.edu", Role: "DHE"},
-		// 1 Non-teaching staff
-		{Name: "Deepak Singh", Email: "deepak@school.edu", Role: "non-teaching"},
+		{Name: "Rahul Gupta", Email: "rahul@school.edu", Role: "School Admin", SchoolSlug: "greenwood-high"},
+		{Name: "Gaurav Verma", Email: "gaurav@school.edu", Role: "School Admin", SchoolSlug: "dps"},
+		{Name: "Shalini Sen", Email: "shalini@school.edu", Role: "School Admin", SchoolSlug: "modern-school"},
+		// DHE (No school)
+		{Name: "System Administrator", Email: "admin@school.edu", Role: "DHE", SchoolSlug: ""},
+		// Non-teaching
+		{Name: "Deepak Singh", Email: "deepak@school.edu", Role: "non-teaching", SchoolSlug: "greenwood-high"},
 	}
 
 	for _, su := range seedUsers {
 		var existing models.User
 		result := gormDB.Where("email = ?", su.Email).First(&existing)
 		if result.Error != nil {
-			// Not found — create
+			var schoolID *uuid.UUID
+			if su.SchoolSlug != "" {
+				var sch models.School
+				if err := gormDB.Where("slug = ?", su.SchoolSlug).First(&sch).Error; err == nil {
+					schoolID = &sch.ID
+				}
+			}
 			newUser := models.User{
 				ID:           uuid.New(),
 				Name:         su.Name,
 				Email:        su.Email,
 				PasswordHash: string(hash),
 				Role:         su.Role,
-				SchoolID:     &school.ID,
+				SchoolID:     schoolID,
 				ClassSection: su.ClassSection,
 				Subject:      su.Subject,
 			}

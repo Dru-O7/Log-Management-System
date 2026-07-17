@@ -56,6 +56,19 @@ export class AdminComponent implements OnInit {
 
   roles = ['DHE', 'School Admin', 'Teaching staff', 'non-teaching', 'vocational'];
 
+  get availableRoles(): string[] {
+    if (this.isSuperAdmin) {
+      return this.roles;
+    }
+    return this.roles.filter(r => r !== 'DHE');
+  }
+
+  onRoleChange() {
+    if (this.userForm.role === 'DHE') {
+      this.userForm.school_id = null;
+    }
+  }
+
   constructor(
     private api: ApiService,
     private auth: AuthService,
@@ -139,7 +152,22 @@ export class AdminComponent implements OnInit {
 
   openCreateUser() {
     this.editingUser = null;
-    this.userForm = { name: '', email: '', role: 'vocational', password: '', class_section: '', subject: '', phone: '', school_id: this.schools[0]?.ID || null };
+    let defaultSchoolId = null;
+    if (this.isSuperAdmin) {
+      defaultSchoolId = this.schools[0]?.ID || null;
+    } else {
+      defaultSchoolId = this.currentUser.SchoolID || null;
+    }
+    this.userForm = {
+      name: '',
+      email: '',
+      role: 'vocational',
+      password: '',
+      class_section: '',
+      subject: '',
+      phone: '',
+      school_id: defaultSchoolId
+    };
     this.userError = '';
     this.showUserModal = true;
   }

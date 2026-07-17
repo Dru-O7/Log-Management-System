@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-details',
@@ -17,6 +17,17 @@ export class DetailsComponent implements OnInit {
   document: any = null;
   history: any[] = [];
   currentUser: any = null;
+
+  isFileType: boolean = false;
+  file: any = null;
+  notes: any[] = [];
+  selectedReceiptID: string = '';
+  selectedReceipt: any = null;
+  activeYellowNote: any = null;
+  showAttachReceiptModal: boolean = false;
+  availableReceipts: any[] = [];
+  attachError: string = '';
+  selectedReceiptToAttach: string = '';
 
   actionRemarks: string = '';
   selectedUser: string = '';
@@ -45,7 +56,7 @@ export class DetailsComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private api: ApiService,
-    private auth: AuthService,
+    public auth: AuthService,
     public router: Router,
     private sanitizer: DomSanitizer,
   ) {}
@@ -87,10 +98,18 @@ export class DetailsComponent implements OnInit {
       error: (err) => console.error('Failed to load document types:', err),
     });
 
+    this.route.queryParams.subscribe((queryParams) => {
+      this.isFileType = queryParams['type'] === 'file';
+    });
+
     this.route.paramMap.subscribe((params) => {
       const id = params.get('id');
       if (id) {
-        this.loadDetails(id);
+        if (this.isFileType) {
+          this.loadFileDetails(id);
+        } else {
+          this.loadDetails(id);
+        }
       }
     });
   }
@@ -406,5 +425,259 @@ export class DetailsComponent implements OnInit {
         },
       });
     }
+  }
+
+  loadFileDetails(id: string) {
+    this.loading = true;
+    this.api.getFileDetails(id).subscribe({
+      next: (res) => {
+        this.file = res.file;
+        this.notes = res.notes || [];
+        this.activeYellowNote = this.notes.find(n => n.Type === 'Yellow' && !n.IsDiscarded);
+        this.newNote = '';
+
+        // Select the first receipt to preview by default if available
+        if (this.file.Receipts && this.file.Receipts.length > 0) {
+          this.selectReceipt(this.file.Receipts[0]);
+        } else {
+          this.selectedReceipt = null;
+          this.selectedReceiptID = '';
+          this.safePdfUrl = null;
+        }
+        this.loading = false;
+        
+        // Also fetch all available (unattached) receipts to support attaching receipts
+        this.loadAvailableReceipts();
+      },
+      error: (err) => {
+        console.error('Failed to load file details:', err);
+        this.loading = false;
+      }
+    });
+  }
+
+  selectReceipt(receipt: any) {
+    this.selectedReceipt = receipt;
+    this.selectedReceiptID = receipt.ID;
+    this.pdfCacheBuster = Date.now();
+    if (receipt.FilePath) {
+      const token = this.auth.getToken();
+      let url = '';
+      if (this.isPdf(receipt.Filename)) {
+        url = `http://localhost:8080/api/documents/${receipt.ID}/download?token=${token}&cb=${this.pdfCacheBuster}`;
+      } else if (
+        this.isDocx(receipt.Filename) ||
+        this.isDoc(receipt.Filename)
+      ) {
+        url = `http://localhost:8080/api/documents/${receipt.ID}/preview-pdf?token=${token}&cb=${this.pdfCacheBuster}`;
+      }
+      this.safePdfUrl = url
+        ? this.sanitizer.bypassSecurityTrustResourceUrl(url)
+        : null;
+    } else {
+      this.safePdfUrl = null;
+    }
+  }
+
+  loadAvailableReceipts() {
+    this.api.getDocuments(this.currentUser.ID).subscribe({
+      next: (docs) => {
+        // Only show receipts that are not already attached to a file
+        this.availableReceipts = (docs || []).filter(doc => !doc.FileID);
+        if (this.availableReceipts.length > 0) {
+          this.selectedReceiptToAttach = this.availableReceipts[0].ID;
+        } else {
+          this.selectedReceiptToAttach = '';
+        }
+      }
+    });
+  }
+
+  openAttachReceiptModal() {
+    this.attachError = '';
+    this.loadAvailableReceipts();
+    this.showAttachReceiptModal = true;
+  }
+
+  attachReceipt() {
+    this.attachError = '';
+    if (!this.selectedReceiptToAttach) {
+      this.attachError = 'Please select a receipt to attach.';
+      return;
+    }
+    this.api.attachReceipt(this.file.ID, this.selectedReceiptToAttach).subscribe({
+      next: () => {
+        this.showAttachReceiptModal = false;
+        this.loadFileDetails(this.file.ID);
+      },
+      error: (err) => {
+        this.attachError = err.error?.error || 'Failed to attach receipt.';
+      }
+    });
+  }
+
+  saveYellowNote() {
+    this.noteError = '';
+    if (!this.newNote.trim()) {
+      this.noteError = 'Note content cannot be empty.';
+      return;
+    }
+
+    // Always create a new yellow note draft
+    this.api.createNote(this.file.ID, this.newNote, 'Yellow').subscribe({
+      next: () => {
+        this.newNote = '';
+        this.loadFileDetails(this.file.ID);
+        alert('Yellow note draft created successfully.');
+      },
+      error: (err) => {
+        this.noteError = err.error?.error || 'Failed to add yellow note.';
+      }
+    });
+  }
+
+  startInlineEdit(note: any) {
+    note.isEditing = true;
+    note.editText = note.Content;
+  }
+
+  saveInlineNote(note: any) {
+    if (!note.editText || !note.editText.trim()) {
+      alert('Note content cannot be empty.');
+      return;
+    }
+    this.api.updateNote(note.ID, note.editText.trim()).subscribe({
+      next: () => {
+        note.isEditing = false;
+        this.loadFileDetails(this.file.ID);
+        alert('Yellow note draft updated successfully.');
+      },
+      error: (err) => {
+        alert(err.error?.error || 'Failed to update note.');
+      }
+    });
+  }
+
+  publishYellowNote(note: any) {
+    if (!note) return;
+    const sig = prompt('Enter your digital token signature prefix (optional, leave blank to auto-generate):');
+    if (sig === null) return; // User cancelled
+
+    this.api.publishNote(note.ID, sig).subscribe({
+      next: () => {
+        this.loadFileDetails(this.file.ID);
+        alert('Note published successfully to immutable Green Note.');
+      },
+      error: (err) => {
+        alert(err.error?.error || 'Failed to publish note.');
+      }
+    });
+  }
+
+  submitFileForward() {
+    if (!this.selectedUser) {
+      alert('Please select a recipient to forward the file.');
+      return;
+    }
+    
+    this.api.forwardFile(this.file.ID, this.selectedUser, this.actionRemarks).subscribe({
+      next: () => {
+        this.showForwardSelect = false;
+        this.actionRemarks = '';
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        alert(err.error?.error || 'Failed to forward file.');
+      }
+    });
+  }
+
+  parseMarkdown(text: string): string {
+    if (!text) return '';
+    // Escape HTML tags to prevent XSS
+    let escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    // Normalize newlines
+    escaped = escaped.replace(/\r\n/g, '\n');
+
+    // Parse blockquotes & list items: lines starting with > or * or -
+    const lines = escaped.split('\n');
+    let insideList = false;
+    const parsedLines = lines.map(line => {
+      let l = line.trim();
+      
+      // Horizontal Rule
+      if (l === '---' || l === '***' || l === '___') {
+        return '<hr class="my-4 border-slate-200 dark:border-slate-800" />';
+      }
+
+      // Headers (H1-H4)
+      if (l.startsWith('# ')) {
+        return `<h1 class="text-xl font-bold text-[var(--text-primary)] mt-3 mb-2">${l.substring(2)}</h1>`;
+      }
+      if (l.startsWith('## ')) {
+        return `<h2 class="text-lg font-bold text-[var(--text-primary)] mt-3 mb-1.5">${l.substring(3)}</h2>`;
+      }
+      if (l.startsWith('### ')) {
+        return `<h3 class="text-base font-bold text-[var(--text-primary)] mt-2 mb-1">${l.substring(4)}</h3>`;
+      }
+      if (l.startsWith('#### ')) {
+        return `<h4 class="text-sm font-semibold text-[var(--text-primary)] mt-2 mb-1">${l.substring(5)}</h4>`;
+      }
+
+      // Blockquotes (starts with &gt;)
+      if (l.startsWith('&gt; ')) {
+        return `<blockquote class="border-l-4 border-indigo-400 pl-3 my-2.5 italic text-[var(--text-secondary)] bg-indigo-50/20 dark:bg-indigo-950/10 py-1 rounded">${l.substring(5)}</blockquote>`;
+      }
+
+      // Bullet lists: starts with * or -
+      if (l.startsWith('* ') || l.startsWith('- ')) {
+        let content = l.substring(2);
+        let prefix = '';
+        if (!insideList) {
+          insideList = true;
+          prefix = '<ul class="list-disc pl-5 my-2 space-y-1 text-sm text-[var(--text-secondary)]">';
+        }
+        return `${prefix}<li>${content}</li>`;
+      } else {
+        let suffix = '';
+        if (insideList) {
+          insideList = false;
+          suffix = '</ul>';
+        }
+        return suffix + l;
+      }
+    });
+
+    if (insideList) {
+      parsedLines.push('</ul>');
+    }
+
+    let parsedHtml = parsedLines.join('\n');
+
+    // Parse bold: **text**
+    parsedHtml = parsedHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Parse italic: *text*
+    parsedHtml = parsedHtml.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Parse inline code: `code`
+    parsedHtml = parsedHtml.replace(/`(.*?)`/g, '<code class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded text-rose-500 dark:text-rose-400 font-mono text-xs">$1</code>');
+
+    // Convert double newlines to paragraph gaps, and single newlines to br
+    parsedHtml = parsedHtml.replace(/\n\n/g, '</p><p class="mt-2">');
+    parsedHtml = parsedHtml.replace(/\n/g, '<br />');
+
+    return `<div class="markdown-content"><p>${parsedHtml}</p></div>`;
+  }
+
+  renderMarkdown(text: string): SafeHtml {
+    const rawHtml = this.parseMarkdown(text);
+    return this.sanitizer.bypassSecurityTrustHtml(rawHtml);
   }
 }

@@ -27,6 +27,12 @@ export class DashboardComponent implements OnInit {
   filteredHistoryEntries: any[] = [];
   loadingHistory: boolean = false;
 
+  viewMode: any = 'receipts';
+  files: any[] = [];
+  showCreateFileModal: boolean = false;
+  newFileForm = { title: '', description: '' };
+  createFileError: string = '';
+
   constructor(
     private api: ApiService, 
     private auth: AuthService, 
@@ -49,7 +55,11 @@ export class DashboardComponent implements OnInit {
 
     this.api.searchSubject.subscribe(val => {
       this.searchText = val;
-      this.loadDocuments();
+      if (this.viewMode === 'receipts') {
+        this.loadDocuments();
+      } else {
+        this.loadFiles();
+      }
       if (this.activeTab === 'archived_closed') {
         this.applyHistoryFilter();
       }
@@ -94,6 +104,17 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  setViewMode(mode: 'receipts' | 'files') {
+    this.viewMode = mode;
+    this.activeTab = 'all_files';
+    this.applyFilter();
+    if (mode === 'receipts') {
+      this.loadDocuments();
+    } else {
+      this.loadFiles();
+    }
+  }
+
   loadDocuments() {
     this.loading = true;
     this.api.getDocuments(this.currentUser.ID, this.searchText).subscribe({
@@ -109,8 +130,52 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  loadFiles() {
+    this.loading = true;
+    this.api.listFiles(this.searchText).subscribe({
+      next: (files) => {
+        this.files = files || [];
+        this.applyFilter();
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Failed to load files:', err);
+        this.loading = false;
+      }
+    });
+  }
+
+  openCreateFile() {
+    this.newFileForm = { title: '', description: '' };
+    this.createFileError = '';
+    this.showCreateFileModal = true;
+  }
+
+  createFile() {
+    this.createFileError = '';
+    const titleTrimmed = (this.newFileForm.title || '').trim();
+    if (!titleTrimmed) {
+      this.createFileError = 'File Title is required.';
+      return;
+    }
+
+    this.api.createFile(titleTrimmed, this.newFileForm.description).subscribe({
+      next: () => {
+        this.showCreateFileModal = false;
+        this.loadFiles();
+      },
+      error: (err) => {
+        this.createFileError = err.error?.error || 'Failed to create file.';
+      }
+    });
+  }
+
   onSearchChange() {
-    this.loadDocuments();
+    if (this.viewMode === 'receipts') {
+      this.loadDocuments();
+    } else {
+      this.loadFiles();
+    }
   }
 
   selectFolder(folderName: string) {
@@ -128,40 +193,28 @@ export class DashboardComponent implements OnInit {
   }
 
   applyFilter() {
-    let list = this.documents;
+    if (this.viewMode === 'receipts') {
+      let list = this.documents;
 
-    // 1. Folder category filter
-    if (this.selectedFolder !== 'All') {
-      list = list.filter(doc => doc.Category?.toLowerCase() === this.selectedFolder.toLowerCase());
-    }
+      // 1. Folder category filter
+      if (this.selectedFolder !== 'All') {
+        list = list.filter(doc => doc.Category?.toLowerCase() === this.selectedFolder.toLowerCase());
+      }
 
-    // 2. Priority filter
-    if (this.selectedPriority !== 'All') {
-      list = list.filter(doc => doc.Priority?.toLowerCase() === this.selectedPriority.toLowerCase());
-    }
+      // 2. Priority filter
+      if (this.selectedPriority !== 'All') {
+        list = list.filter(doc => doc.Priority?.toLowerCase() === this.selectedPriority.toLowerCase());
+      }
 
-    // 3. Tab filter
-    if (this.activeTab !== 'all_files') {
-      const now = new Date();
-      const currentUserIdLower = (this.currentUser.ID || this.currentUser.id || '').toLowerCase();
-      
-      if (this.currentUser.Role === 'Admin') {
-        if (this.activeTab === 'pending_me') {
-          list = list.filter(doc => doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
-        } else if (this.activeTab === 'sent_out') {
-          list = [];
-        } else if (this.activeTab === 'overdue') {
-          list = list.filter(doc => (doc.Status === 'Pending Approval' || doc.Status === 'Sent Back') && doc.SlaDeadline && new Date(doc.SlaDeadline) < now);
-        } else if (this.activeTab === 'approved') {
-          list = list.filter(doc => doc.Status === 'Approved');
-        } else if (this.activeTab === 'archived_closed') {
-          list = list.filter(doc => doc.Status === 'Closed' || doc.Status === 'Archived');
-        }
-      } else {
+      // 3. Tab filter
+      if (this.activeTab !== 'all_files') {
+        const now = new Date();
+        const currentUserIdLower = (this.currentUser.ID || this.currentUser.id || '').toLowerCase();
+
         if (this.activeTab === 'pending_me') {
           list = list.filter(doc => (doc.CurrentOwnerID || '').toLowerCase() === currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
         } else if (this.activeTab === 'sent_out') {
-          list = list.filter(doc => (doc.UploaderID || '').toLowerCase() === currentUserIdLower && (doc.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
+          list = list.filter(doc => (doc.HasActed || doc.hasActed || (doc.UploaderID || '').toLowerCase() === currentUserIdLower) && (doc.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
         } else if (this.activeTab === 'overdue') {
           list = list.filter(doc => (doc.Status === 'Pending Approval' || doc.Status === 'Sent Back') && doc.SlaDeadline && new Date(doc.SlaDeadline) < now);
         } else if (this.activeTab === 'approved') {
@@ -170,12 +223,29 @@ export class DashboardComponent implements OnInit {
           list = list.filter(doc => doc.Status === 'Closed' || doc.Status === 'Archived');
         }
       }
-    }
 
-    this.filteredDocuments = list;
+      this.filteredDocuments = list;
+    } else {
+      let list = this.files;
+
+      const currentUserIdLower = (this.currentUser.ID || this.currentUser.id || '').toLowerCase();
+
+      if (this.activeTab !== 'all_files') {
+        if (this.activeTab === 'pending_me') {
+          list = list.filter(file => (file.CurrentOwnerID || '').toLowerCase() === currentUserIdLower && file.Status !== 'Closed' && file.Status !== 'Archived');
+        } else if (this.activeTab === 'sent_out') {
+          list = list.filter(file => (file.CreatorID || '').toLowerCase() === currentUserIdLower && (file.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && file.Status !== 'Closed' && file.Status !== 'Archived');
+        } else if (this.activeTab === 'approved' || this.activeTab === 'archived_closed') {
+          list = list.filter(file => file.Status === 'Closed' || file.Status === 'Archived');
+        }
+      }
+
+      this.filteredDocuments = list;
+    }
   }
 
   getFolderCount(folderName: string): number {
+    if (this.viewMode !== 'receipts') return 0;
     let list = this.documents;
     if (folderName !== 'All') {
       list = list.filter(doc => doc.Category?.toLowerCase() === folderName.toLowerCase());
@@ -184,30 +254,20 @@ export class DashboardComponent implements OnInit {
   }
 
   getTabCount(tab: string): number {
-    let list = this.documents;
-    if (tab === 'all_files') {
-      return list.length;
-    }
-    const now = new Date();
-    const currentUserIdLower = (this.currentUser.ID || this.currentUser.id || '').toLowerCase();
+    let list = this.viewMode === 'receipts' ? this.documents : this.files;
+    if (!list) return 0;
 
-    if (this.currentUser.Role === 'Admin') {
-      if (tab === 'pending_me') {
-        list = list.filter(doc => doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
-      } else if (tab === 'sent_out') {
-        list = [];
-      } else if (tab === 'overdue') {
-        list = list.filter(doc => (doc.Status === 'Pending Approval' || doc.Status === 'Sent Back') && doc.SlaDeadline && new Date(doc.SlaDeadline) < now);
-      } else if (tab === 'approved') {
-        list = list.filter(doc => doc.Status === 'Approved');
-      } else if (tab === 'archived_closed') {
-        list = list.filter(doc => doc.Status === 'Closed' || doc.Status === 'Archived');
+    if (this.viewMode === 'receipts') {
+      if (tab === 'all_files') {
+        return list.length;
       }
-    } else {
+      const now = new Date();
+      const currentUserIdLower = (this.currentUser.ID || this.currentUser.id || '').toLowerCase();
+
       if (tab === 'pending_me') {
         list = list.filter(doc => (doc.CurrentOwnerID || '').toLowerCase() === currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
       } else if (tab === 'sent_out') {
-        list = list.filter(doc => (doc.UploaderID || '').toLowerCase() === currentUserIdLower && (doc.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
+        list = list.filter(doc => (doc.HasActed || doc.hasActed || (doc.UploaderID || '').toLowerCase() === currentUserIdLower) && (doc.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && doc.Status !== 'Approved' && doc.Status !== 'Rejected' && doc.Status !== 'Closed' && doc.Status !== 'Archived');
       } else if (tab === 'overdue') {
         list = list.filter(doc => (doc.Status === 'Pending Approval' || doc.Status === 'Sent Back') && doc.SlaDeadline && new Date(doc.SlaDeadline) < now);
       } else if (tab === 'approved') {
@@ -215,8 +275,24 @@ export class DashboardComponent implements OnInit {
       } else if (tab === 'archived_closed') {
         list = list.filter(doc => doc.Status === 'Closed' || doc.Status === 'Archived');
       }
+      return list.length;
+    } else {
+      if (tab === 'all_files') {
+        return list.length;
+      }
+      const currentUserIdLower = (this.currentUser.ID || this.currentUser.id || '').toLowerCase();
+
+      if (tab === 'pending_me') {
+        list = list.filter(file => (file.CurrentOwnerID || '').toLowerCase() === currentUserIdLower && file.Status !== 'Closed' && file.Status !== 'Archived');
+      } else if (tab === 'sent_out') {
+        list = list.filter(file => (file.CreatorID || '').toLowerCase() === currentUserIdLower && (file.CurrentOwnerID || '').toLowerCase() !== currentUserIdLower && file.Status !== 'Closed' && file.Status !== 'Archived');
+      } else if (tab === 'approved' || tab === 'archived_closed') {
+        list = list.filter(file => file.Status === 'Closed' || file.Status === 'Archived');
+      } else if (tab === 'overdue') {
+        return 0;
+      }
+      return list.length;
     }
-    return list.length;
   }
 
   getHoldingDuration(assignedAtStr: string): string {
@@ -270,8 +346,12 @@ export class DashboardComponent implements OnInit {
     this.router.navigate(['/upload']);
   }
 
-  goToDetails(id: string) {
-    this.router.navigate(['/details', id]);
+  goToDetails(id: string, type?: string) {
+    if (type === 'file') {
+      this.router.navigate(['/details', id], { queryParams: { type: 'file' } });
+    } else {
+      this.router.navigate(['/details', id]);
+    }
   }
 
   getCategoryDocCount(categoryName: string): number {

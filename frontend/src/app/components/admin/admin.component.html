@@ -211,7 +211,6 @@
                   <th>Email</th>
                   <th>Role</th>
                   <th>School</th>
-                  <th>Class / Subject</th>
                   <th>Joined</th>
                   <th>Actions</th>
                 </tr>
@@ -225,11 +224,6 @@
                   </td>
                   <td><span class="badge" [ngClass]="getRoleBadgeClass(u.Role)">{{u.Role}}</span></td>
                   <td>{{u.SchoolName || '—'}}</td>
-                  <td>
-                    <div *ngIf="u.ClassSection">{{u.ClassSection}}</div>
-                    <div *ngIf="u.Subject" class="td-muted">{{u.Subject}}</div>
-                    <div *ngIf="!u.ClassSection && !u.Subject" class="td-muted">—</div>
-                  </td>
                   <td class="td-muted">{{formatDate(u.CreatedAt)}}</td>
                   <td>
                     <div class="actions-row" *ngIf="deleteConfirmUserId !== u.ID">
@@ -469,8 +463,8 @@
         <div class="form-row">
           <div class="form-group">
             <label for="admin-u-role">Role *</label>
-            <select id="admin-u-role" [(ngModel)]="userForm.role">
-              <option *ngFor="let r of roles" [value]="r">{{r}}</option>
+            <select id="admin-u-role" [(ngModel)]="userForm.role" (change)="onRoleChange()">
+              <option *ngFor="let r of availableRoles" [value]="r">{{r}}</option>
             </select>
           </div>
           <div class="form-group">
@@ -479,19 +473,16 @@
               placeholder="{{editingUser ? 'Leave blank to keep' : 'Min 8 chars'}}">
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="admin-u-class">Class / Section</label>
-            <input id="admin-u-class" type="text" [(ngModel)]="userForm.class_section" placeholder="e.g. Department A">
-          </div>
-          <div class="form-group">
-            <label for="admin-u-subject">Subject</label>
-            <input id="admin-u-subject" type="text" [(ngModel)]="userForm.subject" placeholder="e.g. Science">
-          </div>
-        </div>
         <div class="form-group">
           <label for="admin-u-phone">Phone</label>
           <input id="admin-u-phone" type="text" [(ngModel)]="userForm.phone" placeholder="e.g. +91 9876543210">
+        </div>
+        <div class="form-group" *ngIf="isSuperAdmin">
+          <label for="admin-u-school">School *</label>
+          <select id="admin-u-school" [(ngModel)]="userForm.school_id">
+            <option [ngValue]="null">None (System Level / DHE)</option>
+            <option *ngFor="let s of schools" [value]="s.ID">{{ s.Name }}</option>
+          </select>
         </div>
       </div>
       <div class="modal-footer">

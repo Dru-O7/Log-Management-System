@@ -48,6 +48,7 @@ type DocumentResponse struct {
 	Uploader     models.User          `json:"Uploader"`
 	CurrentOwner models.User          `json:"CurrentOwner"`
 	Attachments  []AttachmentResponse `json:"Attachments"`
+	HasActed     bool                 `json:"HasActed"`
 }
 
 type HistoryResponse struct {
@@ -85,4 +86,65 @@ type UserHistoryEntry struct {
 	DocumentStatus models.DocumentStatus `json:"DocumentStatus"`
 	Category      string                `json:"Category"`
 	Priority      string                `json:"Priority"`
+}
+
+type FileResponse struct {
+	ID             uuid.UUID         `json:"ID"`
+	SchoolID       *uuid.UUID        `json:"SchoolID"`
+	FileNumber     string            `json:"FileNumber"`
+	Title          string            `json:"Title"`
+	Description    string            `json:"Description"`
+	CreatorID      uuid.UUID         `json:"CreatorID"`
+	CurrentOwnerID uuid.UUID         `json:"CurrentOwnerID"`
+	Status         models.FileStatus `json:"Status"`
+	CreatedAt      time.Time         `json:"CreatedAt"`
+	UpdatedAt      time.Time         `json:"UpdatedAt"`
+
+	Creator      models.User        `json:"Creator"`
+	CurrentOwner models.User        `json:"CurrentOwner"`
+	Receipts     []DocumentResponse `json:"Receipts"`
+}
+
+type NoteResponse struct {
+	ID              uuid.UUID       `json:"ID"`
+	FileID          uuid.UUID       `json:"FileID"`
+	AuthorID        uuid.UUID       `json:"AuthorID"`
+	Type            models.NoteType `json:"Type"`
+	Content         string          `json:"Content"`
+	Signature       string          `json:"Signature"`
+	IsDiscarded     bool            `json:"IsDiscarded"`
+	PublishedFromID *uuid.UUID      `json:"PublishedFromID"`
+	CreatedAt       time.Time       `json:"CreatedAt"`
+	UpdatedAt       time.Time       `json:"UpdatedAt"`
+
+	Author models.User `json:"Author"`
+}
+
+type FileDetailsResponse struct {
+	File  FileResponse   `json:"file"`
+	Notes []NoteResponse `json:"notes"`
+}
+
+type CreateFileRequest struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type CreateNoteRequest struct {
+	Content string          `json:"content"`
+	Type    models.NoteType `json:"type"` // Green or Yellow
+}
+
+type PublishNoteRequest struct {
+	Signature string `json:"signature"`
+}
+
+type ForwardFileRequest struct {
+	TargetOwnerID uuid.UUID `json:"target_owner_id"`
+	Remarks       string    `json:"remarks"`
+	Signature     string    `json:"signature"`
+}
+
+type AttachReceiptRequest struct {
+	ReceiptID uuid.UUID `json:"receipt_id"`
 }
