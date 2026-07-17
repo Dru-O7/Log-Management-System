@@ -735,7 +735,7 @@
 
             <!-- Publish / Edit Yellow Note Action Buttons -->
             <div
-              *ngIf="note.Type === 'Yellow' && !note.IsDiscarded && (file.CurrentOwnerID === currentUser.ID || file.current_owner_id === currentUser.id) && (file.Status === 'Open' || file.Status === 'In Review')"
+              *ngIf="note.Type === 'Yellow' && !note.IsDiscarded && file.CurrentOwnerID === currentUser.ID && (file.Status === 'Open' || file.Status === 'In Review')"
               class="mt-3.5 flex justify-end gap-2 border-t border-yellow-100 pt-2.5"
             >
               <button
