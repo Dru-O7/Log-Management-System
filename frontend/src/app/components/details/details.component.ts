@@ -104,13 +104,14 @@ export class DetailsComponent implements OnInit {
             const objectUrl = URL.createObjectURL(blob);
             this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
           },
-          error: (err) => {
+          error: (err: any) => {
             console.error('Failed to load PDF preview:', err);
           }
         });
+        }
         this.loading = false;
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Failed to load document details:', err);
         this.loading = false;
       }

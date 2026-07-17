@@ -15,12 +15,12 @@
 
     <div class="mb-4">
       <label for="up-title" class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">Document Title</label>
-      <input id="up-title" type="text" class="app-input" [(ngModel)]="title" placeholder="e.g. Science Project Report">
+      <input id="up-title" type="text" class="app-input" [(ngModel)]="title" placeholder="e.g. Broken AC in Room 302">
     </div>
 
     <div class="mb-4">
       <label for="up-desc" class="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">Description / Purpose</label>
-      <textarea id="up-desc" class="app-input" rows="3" [(ngModel)]="description" placeholder="Describe the purpose of this document (e.g. Term-end project submission for Physics class)..."></textarea>
+      <textarea id="up-desc" class="app-input min-h-[100px] resize-y" [(ngModel)]="description" placeholder="Describe the purpose of this document (e.g. Maintenance request for faulty wiring)..."></textarea>
     </div>
 
     <div class="grid grid-cols-2 gap-4 mb-4">
