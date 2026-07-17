@@ -1932,7 +1932,7 @@ func (s *service) CreateNote(fileID, authenticatedUserID uuid.UUID, req CreateNo
 	hasAccess := false
 	if user.Role == "DHE" {
 		hasAccess = true
-	} else if file.CurrentOwnerID == authenticatedUserID || file.CreatorID == authenticatedUserID {
+	} else if file.CurrentOwnerID == authenticatedUserID {
 		hasAccess = true
 	} else if file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID {
 		hasAccess = true
@@ -1984,7 +1984,7 @@ func (s *service) UpdateNote(noteID, authenticatedUserID uuid.UUID, content stri
 	hasAccess := false
 	if user.Role == "DHE" {
 		hasAccess = true
-	} else if file.CurrentOwnerID == authenticatedUserID || file.CreatorID == authenticatedUserID {
+	} else if file.CurrentOwnerID == authenticatedUserID {
 		hasAccess = true
 	} else if file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID {
 		hasAccess = true
@@ -2025,8 +2025,8 @@ func (s *service) PublishNote(noteID, authenticatedUserID uuid.UUID, signature s
 		return nil, errors.New("parent file not found")
 	}
 
-	if file.CurrentOwnerID != authenticatedUserID && file.CreatorID != authenticatedUserID {
-		return nil, errors.New("only the file owner or creator can publish this note")
+	if file.CurrentOwnerID != authenticatedUserID {
+		return nil, errors.New("only the file owner can publish this note")
 	}
 
 	if note.Type != models.NoteTypeYellow {
