@@ -111,6 +111,55 @@ export class ApiService {
     });
   }
 
+  createFile(title: string, description: string) {
+    return this.http.post<any>(`${this.apiUrl}/files`, { title, description });
+  }
+
+  listFiles(search?: string) {
+    let url = `${this.apiUrl}/files`;
+    if (search) {
+      url += `?search=${encodeURIComponent(search)}`;
+    }
+    return this.http.get<any[]>(url);
+  }
+
+  getFileDetails(id: string) {
+    return this.http.get<any>(`${this.apiUrl}/files/${id}`);
+  }
+
+  forwardFile(id: string, targetOwnerId: string, remarks: string, signature?: string) {
+    return this.http.post<any>(`${this.apiUrl}/files/${id}/forward`, {
+      target_owner_id: targetOwnerId,
+      remarks,
+      signature
+    });
+  }
+
+  attachReceipt(id: string, receiptId: string) {
+    return this.http.post<any>(`${this.apiUrl}/files/${id}/attach-receipt`, {
+      receipt_id: receiptId
+    });
+  }
+
+  createNote(fileId: string, content: string, type: 'Green' | 'Yellow') {
+    return this.http.post<any>(`${this.apiUrl}/files/${fileId}/notes`, {
+      content,
+      type
+    });
+  }
+
+  updateNote(noteId: string, content: string) {
+    return this.http.put<any>(`${this.apiUrl}/notes/${noteId}`, {
+      content
+    });
+  }
+
+  publishNote(noteId: string, signature: string) {
+    return this.http.post<any>(`${this.apiUrl}/notes/${noteId}/publish`, {
+      signature
+    });
+  }
+
   // ── Admin API ──────────────────────────────────────────────────────────────
 
   getAdminStats() {

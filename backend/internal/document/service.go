@@ -50,6 +50,14 @@ type Service interface {
 	GetNotifications(recipientID uuid.UUID) ([]models.Notification, error)
 	GetReports(schoolID uuid.UUID) (interface{}, error)
 	GetMyHistory(userID uuid.UUID) ([]UserHistoryEntry, error)
+	CreateFile(creatorID uuid.UUID, title, description string) (*FileResponse, error)
+	ListFiles(userID uuid.UUID, search string) ([]FileResponse, error)
+	GetFileDetails(fileID, authenticatedUserID uuid.UUID) (*FileDetailsResponse, error)
+	ForwardFile(fileID, authenticatedUserID uuid.UUID, req ForwardFileRequest) (*FileResponse, error)
+	AttachReceipt(fileID, authenticatedUserID uuid.UUID, receiptID uuid.UUID) (*FileResponse, error)
+	CreateNote(fileID, authenticatedUserID uuid.UUID, req CreateNoteRequest) (*NoteResponse, error)
+	UpdateNote(noteID, authenticatedUserID uuid.UUID, content string) (*NoteResponse, error)
+	PublishNote(noteID, authenticatedUserID uuid.UUID, signature string) (*NoteResponse, error)
 }
 
 type service struct {
@@ -135,6 +143,9 @@ func (s *service) Upload(uploaderID uuid.UUID, targetOwnerIDs []uuid.UUID, title
 	if category == "Circular" || category == "Assignment Broadcast" {
 		assignedOwnerID = uploaderID
 		docStatus = models.StatusApproved // Immediately visible
+	} else if len(targetOwnerIDs) == 1 && targetOwnerIDs[0] == uploaderID {
+		assignedOwnerID = uploaderID
+		docStatus = models.StatusApproved // Self-upload receipt, immediately active
 	} else {
 		// Validate all users in the chain
 		for _, id := range targetOwnerIDs {
@@ -264,7 +275,13 @@ func (s *service) List(userID uuid.UUID, search string) ([]DocumentResponse, err
 
 	responses := make([]DocumentResponse, len(docs))
 	for i, d := range docs {
-		responses[i] = *s.toDocumentResponse(&d)
+		res := s.toDocumentResponse(&d)
+		var count int64
+		s.repo.(*repository).db.Model(&models.WorkflowHistory{}).
+			Where("document_id = ? AND actor_id = ?", d.ID, userID).
+			Count(&count)
+		res.HasActed = count > 0
+		responses[i] = *res
 	}
 	return responses, nil
 }
@@ -446,6 +463,10 @@ func (s *service) Replace(docID, authenticatedUserID, targetOwnerID uuid.UUID, t
 
 	if oldDoc.Status != models.StatusSentBack {
 		return nil, errors.New("document must be in 'Sent Back' status to be replaced or resubmitted")
+	}
+
+	if oldDoc.FileID != nil {
+		return nil, errors.New("cannot modify or replace a receipt that is attached to a file")
 	}
 
 	// Resolve target path (either new uploaded file or copy from previous clean original file)
@@ -851,6 +872,22 @@ func (s *service) authorizeDocAccess(doc *models.Document, userID uuid.UUID) err
 		return errors.New("user not found")
 	}
 
+	// If document is attached to a file container, check file authorization
+	if doc.FileID != nil {
+		var file models.File
+		if err := s.repo.(*repository).db.First(&file, "id = ?", *doc.FileID).Error; err == nil {
+			if user.Role == "DHE" {
+				return nil
+			}
+			if file.CurrentOwnerID == userID || file.CreatorID == userID {
+				return nil
+			}
+			if file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID {
+				return nil
+			}
+		}
+	}
+
 	// Principal has school-wide access
 	if user.Role == "Principal" {
 		if doc.SchoolID != nil && user.SchoolID != nil && *doc.SchoolID == *user.SchoolID {
@@ -889,6 +926,16 @@ func (s *service) authorizeDocAccess(doc *models.Document, userID uuid.UUID) err
 	// Owner or uploader has direct access
 	if doc.UploaderID == userID || doc.CurrentOwnerID == userID {
 		return nil
+	}
+
+	// Anyone in the workflow history of the document has access
+	histories, err := s.repo.GetHistoryByDocumentID(doc.ID)
+	if err == nil {
+		for _, h := range histories {
+			if h.ActorID == userID {
+				return nil
+			}
+		}
 	}
 
 	// Teacher has access to class submissions or history
@@ -1693,4 +1740,328 @@ func (s *service) GetMyHistory(userID uuid.UUID) ([]UserHistoryEntry, error) {
 	}
 
 	return entries, nil
+}
+
+func (s *service) toFileResponse(f *models.File) *FileResponse {
+	receipts := make([]DocumentResponse, len(f.Receipts))
+	for i, r := range f.Receipts {
+		receipts[i] = *s.toDocumentResponse(&r)
+	}
+
+	return &FileResponse{
+		ID:             f.ID,
+		SchoolID:       f.SchoolID,
+		FileNumber:     f.FileNumber,
+		Title:          f.Title,
+		Description:    f.Description,
+		CreatorID:      f.CreatorID,
+		CurrentOwnerID: f.CurrentOwnerID,
+		Status:         f.Status,
+		CreatedAt:      f.CreatedAt,
+		UpdatedAt:      f.UpdatedAt,
+		Creator:        f.Creator,
+		CurrentOwner:   f.CurrentOwner,
+		Receipts:       receipts,
+	}
+}
+
+func (s *service) toNoteResponse(n *models.Note) *NoteResponse {
+	return &NoteResponse{
+		ID:              n.ID,
+		FileID:          n.FileID,
+		AuthorID:        n.AuthorID,
+		Type:            n.Type,
+		Content:         n.Content,
+		Signature:       n.Signature,
+		IsDiscarded:     n.IsDiscarded,
+		PublishedFromID: n.PublishedFromID,
+		CreatedAt:       n.CreatedAt,
+		UpdatedAt:       n.UpdatedAt,
+		Author:          n.Author,
+	}
+}
+
+func (s *service) CreateFile(creatorID uuid.UUID, title, description string) (*FileResponse, error) {
+	var creator models.User
+	if err := s.repo.(*repository).db.First(&creator, "id = ?", creatorID).Error; err != nil {
+		return nil, errors.New("creator user not found")
+	}
+
+	var count int64
+	s.repo.(*repository).db.Model(&models.File{}).Count(&count)
+	fileNum := fmt.Sprintf("EDU/2026/%04d", count+1)
+
+	file := &models.File{
+		ID:             uuid.New(),
+		SchoolID:       creator.SchoolID,
+		FileNumber:     fileNum,
+		Title:          title,
+		Description:    description,
+		CreatorID:      creatorID,
+		CurrentOwnerID: creatorID,
+		Status:         models.FileStatusOpen,
+	}
+
+	if err := s.repo.CreateFile(file); err != nil {
+		return nil, err
+	}
+
+	file.Creator = creator
+	file.CurrentOwner = creator
+
+	return s.toFileResponse(file), nil
+}
+
+func (s *service) ListFiles(userID uuid.UUID, search string) ([]FileResponse, error) {
+	files, err := s.repo.ListFilesByUser(userID, search)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]FileResponse, len(files))
+	for i, f := range files {
+		responses[i] = *s.toFileResponse(&f)
+	}
+	return responses, nil
+}
+
+func (s *service) GetFileDetails(fileID, authenticatedUserID uuid.UUID) (*FileDetailsResponse, error) {
+	file, err := s.repo.GetFileByID(fileID)
+	if err != nil {
+		return nil, errors.New("file not found")
+	}
+
+	var user models.User
+	if err := s.repo.(*repository).db.First(&user, "id = ?", authenticatedUserID).Error; err != nil {
+		return nil, errors.New("unauthorized")
+	}
+	hasAccess := false
+	if user.Role == "DHE" {
+		hasAccess = true
+	} else if file.CurrentOwnerID == authenticatedUserID || file.CreatorID == authenticatedUserID {
+		hasAccess = true
+	} else if file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID {
+		hasAccess = true
+	} else {
+		var noteCount int64
+		s.repo.(*repository).db.Model(&models.Note{}).Where("file_id = ? AND author_id = ?", fileID, authenticatedUserID).Count(&noteCount)
+		if noteCount > 0 {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
+		return nil, errors.New("you are not authorized to view this file")
+	}
+
+	notes, err := s.repo.GetNotesByFileID(fileID)
+	if err != nil {
+		return nil, err
+	}
+
+	noteResponses := make([]NoteResponse, len(notes))
+	for i, n := range notes {
+		noteResponses[i] = *s.toNoteResponse(&n)
+	}
+
+	return &FileDetailsResponse{
+		File:  *s.toFileResponse(file),
+		Notes: noteResponses,
+	}, nil
+}
+
+func (s *service) ForwardFile(fileID, authenticatedUserID uuid.UUID, req ForwardFileRequest) (*FileResponse, error) {
+	file, err := s.repo.GetFileByID(fileID)
+	if err != nil {
+		return nil, errors.New("file not found")
+	}
+
+	if file.CurrentOwnerID != authenticatedUserID {
+		return nil, errors.New("you are not the current owner of this file")
+	}
+
+	file.CurrentOwnerID = req.TargetOwnerID
+	file.Status = models.FileStatusInReview
+
+	if err := s.repo.SaveFile(file); err != nil {
+		return nil, err
+	}
+
+	updatedFile, _ := s.repo.GetFileByID(fileID)
+	return s.toFileResponse(updatedFile), nil
+}
+
+func (s *service) AttachReceipt(fileID, authenticatedUserID uuid.UUID, receiptID uuid.UUID) (*FileResponse, error) {
+	file, err := s.repo.GetFileByID(fileID)
+	if err != nil {
+		return nil, errors.New("file not found")
+	}
+
+	if file.CurrentOwnerID != authenticatedUserID {
+		return nil, errors.New("you are not authorized to attach receipts to this file")
+	}
+
+	receipt, err := s.repo.GetByID(receiptID)
+	if err != nil {
+		return nil, errors.New("receipt not found")
+	}
+
+	if receipt.FileID != nil {
+		return nil, errors.New("receipt is already attached to a file")
+	}
+
+	receipt.FileID = &fileID
+	if err := s.repo.Save(receipt); err != nil {
+		return nil, err
+	}
+
+	updatedFile, _ := s.repo.GetFileByID(fileID)
+	return s.toFileResponse(updatedFile), nil
+}
+
+func (s *service) CreateNote(fileID, authenticatedUserID uuid.UUID, req CreateNoteRequest) (*NoteResponse, error) {
+	file, err := s.repo.GetFileByID(fileID)
+	if err != nil {
+		return nil, errors.New("file not found")
+	}
+
+	var user models.User
+	if err := s.repo.(*repository).db.First(&user, "id = ?", authenticatedUserID).Error; err != nil {
+		return nil, errors.New("unauthorized")
+	}
+	hasAccess := false
+	if user.Role == "DHE" {
+		hasAccess = true
+	} else if file.CurrentOwnerID == authenticatedUserID || file.CreatorID == authenticatedUserID {
+		hasAccess = true
+	} else if file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID {
+		hasAccess = true
+	} else {
+		var noteCount int64
+		s.repo.(*repository).db.Model(&models.Note{}).Where("file_id = ? AND author_id = ?", fileID, authenticatedUserID).Count(&noteCount)
+		if noteCount > 0 {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
+		return nil, errors.New("you are not authorized to write notes on this file")
+	}
+
+	note := &models.Note{
+		ID:       uuid.New(),
+		FileID:   fileID,
+		AuthorID: authenticatedUserID,
+		Type:     req.Type,
+		Content:  req.Content,
+	}
+
+	if err := s.repo.CreateNote(note); err != nil {
+		return nil, err
+	}
+
+	note.Author = user
+	return s.toNoteResponse(note), nil
+}
+
+func (s *service) UpdateNote(noteID, authenticatedUserID uuid.UUID, content string) (*NoteResponse, error) {
+	note, err := s.repo.GetNoteByID(noteID)
+	if err != nil {
+		return nil, errors.New("note not found")
+	}
+
+	// Any user with access to the parent file can edit collaborative Yellow Notes
+	file, err := s.repo.GetFileByID(note.FileID)
+	if err != nil {
+		return nil, errors.New("parent file not found")
+	}
+
+	var user models.User
+	if err := s.repo.(*repository).db.First(&user, "id = ?", authenticatedUserID).Error; err != nil {
+		return nil, errors.New("unauthorized")
+	}
+
+	hasAccess := false
+	if user.Role == "DHE" {
+		hasAccess = true
+	} else if file.CurrentOwnerID == authenticatedUserID || file.CreatorID == authenticatedUserID {
+		hasAccess = true
+	} else if file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID {
+		hasAccess = true
+	} else {
+		var noteCount int64
+		s.repo.(*repository).db.Model(&models.Note{}).Where("file_id = ? AND author_id = ?", note.FileID, authenticatedUserID).Count(&noteCount)
+		if noteCount > 0 {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
+		return nil, errors.New("you are not authorized to edit this note")
+	}
+
+	if note.Type != models.NoteTypeYellow {
+		return nil, errors.New("cannot edit a published Green Note")
+	}
+
+	note.Content = content
+	note.AuthorID = authenticatedUserID // Update active editing author
+	if err := s.repo.SaveNote(note); err != nil {
+		return nil, err
+	}
+
+	note.Author = user
+	return s.toNoteResponse(note), nil
+}
+
+func (s *service) PublishNote(noteID, authenticatedUserID uuid.UUID, signature string) (*NoteResponse, error) {
+	note, err := s.repo.GetNoteByID(noteID)
+	if err != nil {
+		return nil, errors.New("note not found")
+	}
+
+	file, err := s.repo.GetFileByID(note.FileID)
+	if err != nil {
+		return nil, errors.New("parent file not found")
+	}
+
+	if file.CurrentOwnerID != authenticatedUserID && file.CreatorID != authenticatedUserID {
+		return nil, errors.New("only the file owner or creator can publish this note")
+	}
+
+	if note.Type != models.NoteTypeYellow {
+		return nil, errors.New("note is already a published Green Note")
+	}
+
+	note.IsDiscarded = true
+	if err := s.repo.SaveNote(note); err != nil {
+		return nil, err
+	}
+
+	sigToken := signature
+	if sigToken == "" {
+		hasher := sha256.New()
+		hasher.Write([]byte(authenticatedUserID.String() + note.FileID.String() + time.Now().String() + note.Content))
+		sigToken = "DSC-" + hex.EncodeToString(hasher.Sum(nil))[:28]
+	}
+
+	greenNote := &models.Note{
+		ID:              uuid.New(),
+		FileID:          note.FileID,
+		AuthorID:        authenticatedUserID, // The person publishing it becomes the author of the Green Note
+		Type:            models.NoteTypeGreen,
+		Content:         note.Content,
+		Signature:       sigToken,
+		PublishedFromID: &note.ID,
+	}
+
+	if err := s.repo.CreateNote(greenNote); err != nil {
+		return nil, err
+	}
+
+	var author models.User
+	s.repo.(*repository).db.First(&author, "id = ?", authenticatedUserID)
+	greenNote.Author = author
+
+	return s.toNoteResponse(greenNote), nil
 }

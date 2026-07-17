@@ -12,8 +12,8 @@ import (
 type Service interface {
 	GetStats(schoolID *string) (*SystemStats, error)
 	GetAllUsers(schoolID *string) ([]UserResponse, error)
-	CreateUser(req CreateUserRequest) (*UserResponse, error)
-	UpdateUser(id uuid.UUID, req UpdateUserRequest) (*UserResponse, error)
+	CreateUser(req CreateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
+	UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
 	DeleteUser(id uuid.UUID) error
 	GetAllDocumentTypes(schoolID *string) ([]DocumentTypeResponse, error)
 	CreateDocumentType(req CreateDocTypeRequest) (*DocumentTypeResponse, error)
@@ -39,12 +39,25 @@ func (s *service) GetAllUsers(schoolID *string) ([]UserResponse, error) {
 	return s.repo.GetAllUsers(schoolID)
 }
 
-func (s *service) CreateUser(req CreateUserRequest) (*UserResponse, error) {
+func (s *service) CreateUser(req CreateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error) {
 	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Email) == "" {
 		return nil, errors.New("name and email are required")
 	}
 	if req.Password == "" {
 		req.Password = "password" // default password
+	}
+
+	var targetSchoolID *uuid.UUID
+	if actorRole == "School Admin" {
+		if req.Role == "DHE" || req.Role == "SuperAdmin" || req.Role == "Admin" {
+			return nil, errors.New("school admin cannot assign administrative roles")
+		}
+		if actorSchoolID == nil {
+			return nil, errors.New("school admin must belong to a school")
+		}
+		targetSchoolID = actorSchoolID
+	} else {
+		targetSchoolID = req.SchoolID
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -58,7 +71,7 @@ func (s *service) CreateUser(req CreateUserRequest) (*UserResponse, error) {
 		Email:        req.Email,
 		PasswordHash: string(hash),
 		Role:         req.Role,
-		SchoolID:     req.SchoolID,
+		SchoolID:     targetSchoolID,
 		ClassSection: req.ClassSection,
 		Subject:      req.Subject,
 		Phone:        req.Phone,
@@ -82,7 +95,7 @@ func (s *service) CreateUser(req CreateUserRequest) (*UserResponse, error) {
 	return resp, nil
 }
 
-func (s *service) UpdateUser(id uuid.UUID, req UpdateUserRequest) (*UserResponse, error) {
+func (s *service) UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error) {
 	u, err := s.repo.GetUserByID(id)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -118,9 +131,25 @@ func (s *service) UpdateUser(id uuid.UUID, req UpdateUserRequest) (*UserResponse
 		u.Email = req.Email
 	}
 	if req.Role != "" {
+		if actorRole == "School Admin" {
+			if req.Role == "DHE" || req.Role == "SuperAdmin" || req.Role == "Admin" {
+				return nil, errors.New("school admin cannot assign administrative roles")
+			}
+		}
 		u.Role = req.Role
 	}
-	if req.SchoolID != nil {
+
+	// Enforce school restrictions for School Admin / DHE
+	if actorRole == "School Admin" {
+		if actorSchoolID == nil {
+			return nil, errors.New("school admin must belong to a school")
+		}
+		if u.SchoolID == nil || *u.SchoolID != *actorSchoolID {
+			return nil, errors.New("you are not authorized to update users outside your school")
+		}
+		u.SchoolID = actorSchoolID
+	} else {
+		// DHE/SuperAdmin can change the school of any user (including changing it to nil/None)
 		u.SchoolID = req.SchoolID
 	}
 	u.ClassSection = req.ClassSection

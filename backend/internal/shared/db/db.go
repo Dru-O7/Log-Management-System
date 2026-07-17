@@ -23,11 +23,13 @@ func Init(databaseURL string) *gorm.DB {
 		&models.School{},
 		&models.User{},
 		&models.DocumentType{},
+		&models.File{},
 		&models.Document{},
 		&models.DocumentPendingApprover{},
 		&models.WorkflowHistory{},
 		&models.Notification{},
 		&models.Attachment{},
+		&models.Note{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)

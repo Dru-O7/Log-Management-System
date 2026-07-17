@@ -60,9 +60,39 @@
     </div>
   </div>
 
+  <!-- View Mode Switcher (Receipts vs Files) -->
+  <div class="flex border-b border-[var(--border)]/15 gap-4 mb-4">
+    <button
+      class="px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0 flex items-center gap-2"
+      [ngClass]="{
+        'border-[var(--primary)] text-[var(--primary)]': viewMode === 'receipts',
+        'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': viewMode !== 'receipts'
+      }"
+      (click)="setViewMode('receipts')"
+    >
+      📁 Receipts (Inward Documents)
+    </button>
+    <button
+      class="px-5 py-3 text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent border-0 flex items-center gap-2"
+      [ngClass]="{
+        'border-[var(--primary)] text-[var(--primary)]': viewMode === 'files',
+        'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]': viewMode !== 'files'
+      }"
+      (click)="setViewMode('files')"
+    >
+      📂 Files (Noting Sheets)
+    </button>
+    <div class="flex-grow flex justify-end items-center" *ngIf="viewMode === 'files'">
+      <button class="app-btn-primary !py-1.5 px-3 flex items-center gap-1.5 cursor-pointer border-0 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md" (click)="openCreateFile()">
+        ＋ Create File Container
+      </button>
+    </div>
+  </div>
+
   <!-- Priority Filter Bar -->
   <div
     class="flex flex-wrap gap-2 mb-6 justify-between items-center bg-[var(--surface)] p-3 border border-[var(--border)] rounded-xl shadow-sm"
+    *ngIf="viewMode === 'receipts'"
   >
     <div class="flex items-center gap-1.5 flex-wrap">
       <span
@@ -243,7 +273,7 @@
     </div>
 
     <!-- Active List -->
-    <div class="space-y-3.5" *ngIf="!loading && filteredDocuments.length > 0">
+    <div class="space-y-3.5" *ngIf="viewMode === 'receipts' && !loading && filteredDocuments.length > 0">
       <div
         *ngFor="let doc of filteredDocuments"
         class="p-4 bg-[var(--background)]/30 hover:bg-[var(--background)]/75 border border-[var(--border)] rounded-xl flex justify-between items-center transition-all duration-200 cursor-pointer shadow-xs hover:shadow-sm"
@@ -332,7 +362,60 @@
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- ── FILE LIST ── -->
+    <div class="space-y-3.5" *ngIf="viewMode === 'files' && !loading && filteredDocuments.length > 0">
+        <div
+          *ngFor="let file of filteredDocuments"
+          class="p-4 bg-[var(--background)]/30 hover:bg-[var(--background)]/75 border border-[var(--border)] rounded-xl flex justify-between items-center transition-all duration-200 cursor-pointer shadow-xs hover:shadow-sm"
+          (click)="goToDetails(file.ID, 'file')"
+        >
+          <div class="flex-1 min-w-0 pr-4">
+            <div class="flex items-center gap-2.5 mb-1.5 flex-wrap">
+              <span
+                class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/30 px-2.5 py-0.5 rounded"
+              >
+                {{ file.FileNumber }}
+              </span>
+              <div class="font-bold text-[var(--text-primary)] text-base truncate">
+                {{ file.Title }}
+              </div>
+            </div>
+            <div
+              class="text-sm text-[var(--text-secondary)] mb-2 truncate"
+              *ngIf="file.Description"
+            >
+              {{ file.Description }}
+            </div>
+            <div
+              class="text-xs text-[var(--text-muted)] flex flex-wrap gap-x-4 gap-y-1 items-center"
+            >
+              <span>
+                Created by:
+                <strong class="text-[var(--text-secondary)] font-medium">{{ file.Creator?.Name }}</strong>
+              </span>
+              <span>
+                Current Owner:
+                <strong class="text-[var(--text-secondary)] font-medium">{{ file.CurrentOwner?.Name }}</strong>
+              </span>
+              <span>Created: {{ file.CreatedAt | date: "short" }}</span>
+            </div>
+          </div>
+          <div class="flex-shrink-0">
+            <span
+              class="px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+              [ngClass]="{
+                'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-440 border-emerald-200 dark:border-emerald-900/30': file.Status === 'Open',
+                'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-440 border-amber-200 dark:border-amber-900/30': file.Status === 'In Review',
+                'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700': file.Status === 'Closed',
+                'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-440 border-blue-200 dark:border-blue-900/30': file.Status === 'Archived'
+              }"
+            >
+              {{ file.Status }}
+            </span>
+        </div>
+      </div>
+    </div>
 
   <!-- Analytical Reports Panel (Only visible for Admin) -->
   <div
@@ -511,6 +594,31 @@
             >
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create File Modal -->
+  <div class="modal-overlay" *ngIf="showCreateFileModal" (click)="showCreateFileModal=false">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Create File Container</span>
+        <button class="modal-close" (click)="showCreateFileModal=false">✕</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="createFileError" class="alert alert-error">{{createFileError}}</div>
+        <div class="form-group">
+          <label for="file-title">File Title *</label>
+          <input id="file-title" name="title" type="text" [(ngModel)]="newFileForm.title" placeholder="e.g. Greenwood Annual Report Submission">
+        </div>
+        <div class="form-group">
+          <label for="file-description">Description</label>
+          <textarea id="file-description" name="description" rows="3" [(ngModel)]="newFileForm.description" placeholder="Add descriptive details or notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showCreateFileModal=false">Cancel</button>
+        <button class="btn-primary" (click)="createFile()">Create File</button>
       </div>
     </div>
   </div>

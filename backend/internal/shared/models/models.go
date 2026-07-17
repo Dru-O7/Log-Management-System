@@ -86,6 +86,7 @@ type Document struct {
 	ReferralOwnerID *uuid.UUID `gorm:"type:uuid"` // Nullable: stores original owner during refer/detour
 	NotingSheet     string    `gorm:"type:text"` // Running commentaries
 	DraftSpace      string    `gorm:"type:text"` // Drafted letters/orders
+	FileID          *uuid.UUID `gorm:"type:uuid;index"` // Associated file (if attached)
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 
@@ -216,6 +217,68 @@ type Notification struct {
 }
 
 func (base *Notification) BeforeCreate(tx *gorm.DB) (err error) {
+	if base.ID == uuid.Nil {
+		base.ID = uuid.New()
+	}
+	return
+}
+
+type FileStatus string
+const (
+	FileStatusOpen     FileStatus = "Open"
+	FileStatusInReview FileStatus = "In Review"
+	FileStatusClosed   FileStatus = "Closed"
+	FileStatusArchived FileStatus = "Archived"
+)
+
+type File struct {
+	ID             uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	SchoolID       *uuid.UUID `gorm:"type:uuid"`
+	FileNumber     string     `gorm:"size:100;uniqueIndex"` // e.g. EDU/2026/0001
+	Title          string     `gorm:"size:255;not null"`
+	Description    string     `gorm:"type:text"`
+	CreatorID      uuid.UUID  `gorm:"type:uuid;not null"`
+	CurrentOwnerID uuid.UUID  `gorm:"type:uuid;not null"` // Who currently acts on the file
+	Status         FileStatus `gorm:"size:50;not null;default:'Open'"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+
+	School       *School    `gorm:"foreignKey:SchoolID"`
+	Creator      User       `gorm:"foreignKey:CreatorID"`
+	CurrentOwner User       `gorm:"foreignKey:CurrentOwnerID"`
+	Receipts     []Document `gorm:"foreignKey:FileID"`
+}
+
+type NoteType string
+const (
+	NoteTypeGreen  NoteType = "Green"
+	NoteTypeYellow NoteType = "Yellow"
+)
+
+type Note struct {
+	ID              uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	FileID          uuid.UUID  `gorm:"type:uuid;not null;index"`
+	AuthorID        uuid.UUID  `gorm:"type:uuid;not null"`
+	Type            NoteType   `gorm:"size:20;not null"`
+	Content         string     `gorm:"type:text;not null"`
+	Signature       string     `gorm:"type:text"` // Digital signature token snapshot
+	IsDiscarded     bool       `gorm:"default:false"`
+	PublishedFromID *uuid.UUID `gorm:"type:uuid"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+
+	File   File `gorm:"foreignKey:FileID"`
+	Author User `gorm:"foreignKey:AuthorID"`
+}
+
+func (base *File) BeforeCreate(tx *gorm.DB) (err error) {
+	if base.ID == uuid.Nil {
+		base.ID = uuid.New()
+	}
+	return
+}
+
+func (base *Note) BeforeCreate(tx *gorm.DB) (err error) {
 	if base.ID == uuid.Nil {
 		base.ID = uuid.New()
 	}

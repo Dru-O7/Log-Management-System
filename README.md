@@ -134,22 +134,26 @@ The Angular frontend provides dashboard controls for document actions, tracking 
 
 The database is pre-seeded with mock users. You can log in on the login screen by entering one of these email addresses along with the default password **`password`**:
 
-### System Administrators (DHE)
-- **System Administrator**: `admin@school.edu`
+### System Level / DHE (No School)
+- **System Administrator**: `admin@school.edu` (Role: DHE Admin)
 
-### School Admins
-- **Rahul Gupta**: `rahul@school.edu`
-- **Gaurav Verma**: `gaurav@school.edu`
+### Delhi Public School
+- **Gaurav Verma**: `gaurav@school.edu` (Role: School Admin)
+- **Neha Reddy**: `neha@school.edu` (Role: Teaching Staff - Department B, History)
 
-### Teaching Staff
-- **Priya Patel**: `priya@school.edu` (Department A)
-- **Neha Reddy**: `neha@school.edu` (Department B)
-- **Vikram Iyer**: `vikram@school.edu` (Department C)
-- **Meera Menon**: `meera@school.edu` (Department D)
+### Greenwood High School
+- **Rahul Gupta**: `rahul@school.edu` (Role: School Admin)
+- **Priya Patel**: `priya@school.edu` (Role: Teaching Staff - Department A, Science)
+- **Deepak Singh**: `deepak@school.edu` (Role: Non-teaching)
 
-### Other Staff
-- **Deepak Singh**: `deepak@school.edu` (Non-teaching)
-- **Aarav Sharma**: `aarav@school.edu` (Vocational)
+### Modern School
+- **Shalini Sen**: `shalini@school.edu` (Role: School Admin)
+- **Vikram Iyer**: `vikram@school.edu` (Role: Teaching Staff - Department C, Mathematics)
+- **Meera Menon**: `meera@school.edu` (Role: Teaching Staff - Department D, English)
+- **Aarav Sharma**: `aarav@school.edu` (Role: Vocational - Department A)
+- **Ananya Iyer**: `ananya@school.edu` (Role: Vocational - Department B)
+- **Rohan Das**: `rohan@school.edu` (Role: Vocational - Department C)
+- **Kavya Menon**: `kavya@school.edu` (Role: Vocational - Department D)
 
 ---
 

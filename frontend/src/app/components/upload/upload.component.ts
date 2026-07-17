@@ -111,17 +111,21 @@ export class UploadComponent implements OnInit {
 
 
 
+  forwardImmediately: boolean = false;
+
   upload() {
     if (!this.selectedFile && this.category !== 'Assignment Broadcast') {
       this.error = 'Please select a file.';
       return;
     }
-    if (this.category !== 'Circular' && this.category !== 'Assignment Broadcast' && !this.selectedApproverId) {
+
+    const currentUser = this.auth.getCurrentUser();
+
+    if (this.category !== 'Circular' && this.category !== 'Assignment Broadcast' && this.forwardImmediately && !this.selectedApproverId) {
       this.error = 'Please select a recipient to forward to.';
       return;
     }
 
-    const currentUser = this.auth.getCurrentUser();
     const formData = new FormData();
     if (this.selectedFile) {
       formData.append('file', this.selectedFile as Blob);
@@ -129,7 +133,8 @@ export class UploadComponent implements OnInit {
     formData.append('uploader_id', currentUser.ID || currentUser.id);
     
     if (this.category !== 'Circular' && this.category !== 'Assignment Broadcast') {
-      formData.append('target_owner_ids', this.selectedApproverId);
+      const finalApproverId = this.forwardImmediately ? this.selectedApproverId : (currentUser.ID || currentUser.id);
+      formData.append('target_owner_ids', finalApproverId);
     }
     formData.append('target_class', this.targetClasses.join(','));
 

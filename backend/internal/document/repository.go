@@ -25,6 +25,14 @@ type Repository interface {
 	GetPendingApproverByStage(docID uuid.UUID, stage int) (*models.DocumentPendingApprover, error)
 	MarkApproverStatus(docID, userID uuid.UUID, stage int, status string) error
 	GetSubmissionsByRefDocID(refDocID uuid.UUID) ([]models.Document, error)
+	CreateFile(file *models.File) error
+	SaveFile(file *models.File) error
+	GetFileByID(id uuid.UUID) (*models.File, error)
+	ListFilesByUser(userID uuid.UUID, search string) ([]models.File, error)
+	CreateNote(note *models.Note) error
+	SaveNote(note *models.Note) error
+	GetNoteByID(id uuid.UUID) (*models.Note, error)
+	GetNotesByFileID(fileID uuid.UUID) ([]models.Note, error)
 }
 
 type repository struct {
@@ -99,16 +107,20 @@ func (r *repository) ListByUser(userID uuid.UUID, search string) ([]models.Docum
 	case "non-teaching":
 		// non-teaching can see:
 		// 1. Documents they own / pending review
+		// 2. Documents where they are in history
 		query = query.Where(
-			"uploader_id = ? OR current_owner_id = ?",
-			userID, userID,
+			"uploader_id = ? OR current_owner_id = ? OR id IN (SELECT document_id FROM workflow_histories WHERE actor_id = ?)",
+			userID, userID, userID,
 		)
 
 	default: // vocational or other fallback
-		// vocational can only see their own submissions + relevant Official Circulars
+		// vocational can see:
+		// 1. Documents they own
+		// 2. Documents where they are in history
+		// 3. Relevant Official Circulars
 		query = query.Where(
-			"uploader_id = ? OR current_owner_id = ? OR (category = 'Official Circular' AND (target_class = 'All' OR target_class = ?))",
-			userID, userID, user.ClassSection,
+			"uploader_id = ? OR current_owner_id = ? OR id IN (SELECT document_id FROM workflow_histories WHERE actor_id = ?) OR (category = 'Official Circular' AND (target_class = 'All' OR target_class = ?))",
+			userID, userID, userID, user.ClassSection,
 		)
 	}
 
@@ -214,4 +226,63 @@ func (r *repository) MarkApproverStatus(docID, userID uuid.UUID, stage int, stat
 			"status":    status,
 			"signed_at": &now,
 		}).Error
+}
+
+func (r *repository) CreateFile(file *models.File) error {
+	return r.db.Create(file).Error
+}
+
+func (r *repository) SaveFile(file *models.File) error {
+	return r.db.Omit("Creator", "CurrentOwner", "Receipts").Save(file).Error
+}
+
+func (r *repository) GetFileByID(id uuid.UUID) (*models.File, error) {
+	var file models.File
+	err := r.db.Preload("Creator").Preload("CurrentOwner").Preload("Receipts").First(&file, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+func (r *repository) ListFilesByUser(userID uuid.UUID, search string) ([]models.File, error) {
+	var files []models.File
+	query := r.db.Preload("Creator").Preload("CurrentOwner").
+		Order("created_at desc")
+
+	// Filter: only show files created by the user, OR currently owned by the user, OR where they have written a Note
+	query = query.Where(
+		"creator_id = ? OR current_owner_id = ? OR id IN (SELECT file_id FROM notes WHERE author_id = ?)",
+		userID, userID, userID,
+	)
+
+	if search != "" {
+		query = query.Where("title ILIKE ? OR file_number ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	err := query.Find(&files).Error
+	return files, err
+}
+
+func (r *repository) CreateNote(note *models.Note) error {
+	return r.db.Create(note).Error
+}
+
+func (r *repository) SaveNote(note *models.Note) error {
+	return r.db.Omit("File", "Author").Save(note).Error
+}
+
+func (r *repository) GetNoteByID(id uuid.UUID) (*models.Note, error) {
+	var note models.Note
+	err := r.db.Preload("Author").First(&note, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &note, nil
+}
+
+func (r *repository) GetNotesByFileID(fileID uuid.UUID) ([]models.Note, error) {
+	var notes []models.Note
+	err := r.db.Preload("Author").Where("file_id = ? AND is_discarded = false", fileID).Order("created_at asc").Find(&notes).Error
+	return notes, err
 }

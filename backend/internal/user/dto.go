@@ -7,10 +7,11 @@ import (
 )
 
 type UserResponse struct {
-	ID        uuid.UUID `json:"ID"`
-	Name      string    `json:"Name"`
-	Email     string    `json:"Email"`
-	Role      string    `json:"Role"`
-	CreatedAt time.Time `json:"CreatedAt"`
-	UpdatedAt time.Time `json:"UpdatedAt"`
+	ID        uuid.UUID  `json:"ID"`
+	Name      string     `json:"Name"`
+	Email     string     `json:"Email"`
+	Role      string     `json:"Role"`
+	SchoolID  *uuid.UUID `json:"SchoolID"`
+	CreatedAt time.Time  `json:"CreatedAt"`
+	UpdatedAt time.Time  `json:"UpdatedAt"`
 }
