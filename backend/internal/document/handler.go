@@ -441,7 +441,7 @@ func (h *Handler) CreateFile(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
-	res, err := h.service.CreateFile(userID, req.Title, req.Description, req.Category, req.SubCategory)
+	res, err := h.service.CreateFile(userID, req.Title, req.Description, req.Category, req.SubCategory, req.Priority)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

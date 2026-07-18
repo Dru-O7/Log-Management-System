@@ -50,7 +50,7 @@ type Service interface {
 	GetNotifications(recipientID uuid.UUID) ([]models.Notification, error)
 	GetReports(schoolID uuid.UUID) (interface{}, error)
 	GetMyHistory(userID uuid.UUID) ([]UserHistoryEntry, error)
-	CreateFile(creatorID uuid.UUID, title, description, category, subCategory string) (*FileResponse, error)
+	CreateFile(creatorID uuid.UUID, title, description, category, subCategory, priority string) (*FileResponse, error)
 	ListFiles(userID uuid.UUID, search string) ([]FileResponse, error)
 	GetFileDetails(fileID, authenticatedUserID uuid.UUID) (*FileDetailsResponse, error)
 	ForwardFile(fileID, authenticatedUserID uuid.UUID, req ForwardFileRequest) (*FileResponse, error)
@@ -1761,6 +1761,7 @@ func (s *service) toFileResponse(f *models.File) *FileResponse {
 		CreatorID:      f.CreatorID,
 		CurrentOwnerID: f.CurrentOwnerID,
 		Status:         f.Status,
+		Priority:       f.Priority,
 		CreatedAt:      f.CreatedAt,
 		UpdatedAt:      f.UpdatedAt,
 		Creator:        f.Creator,
@@ -1785,7 +1786,7 @@ func (s *service) toNoteResponse(n *models.Note) *NoteResponse {
 	}
 }
 
-func (s *service) CreateFile(creatorID uuid.UUID, title, description, category, subCategory string) (*FileResponse, error) {
+func (s *service) CreateFile(creatorID uuid.UUID, title, description, category, subCategory, priority string) (*FileResponse, error) {
 	var creator models.User
 	if err := s.repo.(*repository).db.First(&creator, "id = ?", creatorID).Error; err != nil {
 		return nil, errors.New("creator user not found")
@@ -1808,6 +1809,10 @@ func (s *service) CreateFile(creatorID uuid.UUID, title, description, category, 
 	year := time.Now().Year()
 	fileNum := fmt.Sprintf("%s/%s/%d/%04d", catPrefix, subCatPrefix, year, count+1)
 
+	if priority == "" {
+		priority = "Normal"
+	}
+
 	file := &models.File{
 		ID:             uuid.New(),
 		SchoolID:       creator.SchoolID,
@@ -1819,6 +1824,7 @@ func (s *service) CreateFile(creatorID uuid.UUID, title, description, category, 
 		CreatorID:      creatorID,
 		CurrentOwnerID: creatorID,
 		Status:         models.FileStatusOpen,
+		Priority:       priority,
 	}
 
 	if err := s.repo.CreateFile(file); err != nil {
