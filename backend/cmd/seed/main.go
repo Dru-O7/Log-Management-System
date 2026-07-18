@@ -40,7 +40,6 @@ func main() {
 		log.Fatalf("Failed to create school3: %v", err)
 	}
 	log.Println("Seeded schools: Greenwood High, DPS, Modern School")
-	school := school1 // Keep reference to first school for document types seeding
 
 	// 2. Hash default password
 	hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
@@ -77,13 +76,14 @@ func main() {
 	}
 	log.Println("Seeded users across multiple schools.")
 
-	// 4. Ensure document types are seeded
-	var docTypeCount int64
-	gormDB.Model(&models.DocumentType{}).Count(&docTypeCount)
-	if docTypeCount == 0 {
+	// 4. Ensure document types are seeded for all schools
+	var schools []models.School
+	gormDB.Find(&schools)
+
+	for _, s := range schools {
 		docTypes := []models.DocumentType{
 			{
-				SchoolID:       school.ID,
+				SchoolID:       s.ID,
 				Name:           "Staff Grievance",
 				Slug:           "staff-grievance",
 				WorkflowStages: `[{"stage": 1, "role": "Teaching staff", "label": "Department Head", "optional": false}]`,
@@ -91,7 +91,7 @@ func main() {
 				SlaHours:       72,
 			},
 			{
-				SchoolID:       school.ID,
+				SchoolID:       s.ID,
 				Name:           "Infrastructure Issue",
 				Slug:           "infrastructure-issue",
 				WorkflowStages: `[{"stage": 1, "role": "School Admin", "label": "School Admin Final approval", "optional": false}]`,
@@ -99,7 +99,7 @@ func main() {
 				SlaHours:       120,
 			},
 			{
-				SchoolID:       school.ID,
+				SchoolID:       s.ID,
 				Name:           "Disciplinary Issue",
 				Slug:           "disciplinary-issue",
 				WorkflowStages: `[{"stage": 1, "role": "Teaching staff", "label": "Department Head", "optional": false}]`,
@@ -107,7 +107,7 @@ func main() {
 				SlaHours:       24,
 			},
 			{
-				SchoolID:       school.ID,
+				SchoolID:       s.ID,
 				Name:           "Audit Report",
 				Slug:           "audit-report",
 				WorkflowStages: `[{"stage": 1, "role": "School Admin", "label": "School Admin Approval", "optional": false}]`,
@@ -115,7 +115,7 @@ func main() {
 				SlaHours:       96,
 			},
 			{
-				SchoolID:       school.ID,
+				SchoolID:       s.ID,
 				Name:           "Official Circular",
 				Slug:           "official-circular",
 				WorkflowStages: `[]`,
@@ -124,10 +124,13 @@ func main() {
 			},
 		}
 		for i := range docTypes {
-			docTypes[i].ID = uuid.New()
-			gormDB.Create(&docTypes[i])
+			var existing models.DocumentType
+			if err := gormDB.Where("school_id = ? AND slug = ?", s.ID, docTypes[i].Slug).First(&existing).Error; err != nil {
+				docTypes[i].ID = uuid.New()
+				gormDB.Create(&docTypes[i])
+				log.Printf("Seeded missing document type for school %s: %s", s.Name, docTypes[i].Name)
+			}
 		}
-		log.Println("Database seeded with document types.")
 	}
 
 	log.Println("Database seeding completed successfully.")

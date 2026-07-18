@@ -14,4 +14,5 @@ func RegisterRoutes(g *echo.Group, handler *Handler, jwtSecret []byte) {
 	r.POST("/send-email", handler.SendManualEmail)
 	r.PUT("/profile/password", handler.UpdatePassword)
 	r.PUT("/profile/phone", handler.UpdatePhone)
+	r.PUT("/profile/avatar", handler.UpdateAvatar)
 }

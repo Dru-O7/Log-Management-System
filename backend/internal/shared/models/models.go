@@ -26,6 +26,7 @@ type User struct {
 	ClassSection string     `gorm:"size:50"`                               // Scoped access for Teaching staff/vocational (e.g. "Department A")
 	Subject      string     `gorm:"size:100"`                           // Assigned subject for Teacher
 	Phone        string     `gorm:"size:20"`                            // For notifications
+	Avatar       string     `gorm:"type:text"`                          // Profile picture base64 string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 

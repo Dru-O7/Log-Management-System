@@ -336,6 +336,7 @@
                   <tr>
                     <th>Name</th>
                     <th>Slug</th>
+                    <th *ngIf="isSuperAdmin">School</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -344,6 +345,7 @@
                   <tr *ngFor="let dt of filteredDocTypes">
                     <td class="td-name">{{dt.Name}}</td>
                     <td class="td-muted">{{dt.Slug}}</td>
+                    <td *ngIf="isSuperAdmin" class="td-info" style="font-weight: 500; color: var(--primary);">{{dt.SchoolName || '—'}}</td>
                     <td>
                       <span class="badge" [ngClass]="dt.Active ? 'badge-active' : 'badge-inactive'">
                         {{dt.Active ? 'Active' : 'Inactive'}}

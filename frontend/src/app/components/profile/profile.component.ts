@@ -127,39 +127,39 @@ export class ProfileComponent implements OnInit {
       }
     }
 
-    this.saving = true;
-
-    // Save Theme to localStorage
-    if (isThemeChanged) {
+    if (!isAvatarChanged && !isPasswordAttempt) {
+      // Theme only change
       localStorage.setItem('theme', this.currentTheme);
       this.originalTheme = this.currentTheme;
+      this.saveSuccess = 'Theme preference updated successfully.';
+      setTimeout(() => this.saveSuccess = '', 4000);
+      return;
     }
 
-    // Save Avatar to localStorage & currentUser state
-    if (isAvatarChanged) {
-      const updatedUser = { 
-        ...this.currentUser, 
-        Avatar: this.avatarPreview,
-        avatar: this.avatarPreview
-      };
-      this.currentUser = updatedUser;
-      this.originalAvatar = this.avatarPreview;
-      this.auth.setCurrentUser(updatedUser, this.auth.getToken()!);
-    }
+    this.saving = true;
 
-    const passwordReq = (isPasswordAttempt
+    const avatarReq = isAvatarChanged
+      ? this.http.put(`${this.apiUrl}/profile/avatar`, { avatar: this.avatarPreview })
+      : of(null);
+
+    const passwordReq = isPasswordAttempt
       ? this.http.put(`${this.apiUrl}/profile/password`, {
           current_password: this.currentPassword,
           new_password: this.newPassword
         })
-      : of(null)) as any;
+      : of(null);
 
-    passwordReq.subscribe({
+    forkJoin({
+      avatar: avatarReq,
+      password: passwordReq
+    }).subscribe({
       next: (res: any) => {
         this.saving = false;
         
         let msg = 'Profile updated successfully.';
-        if (isPasswordAttempt) {
+        if (isPasswordAttempt && isAvatarChanged) {
+          msg = 'Password and profile photo updated successfully.';
+        } else if (isPasswordAttempt) {
           msg = 'Password updated successfully.';
         } else if (isAvatarChanged && isThemeChanged) {
           msg = 'Profile photo and theme preference updated.';
@@ -170,6 +170,24 @@ export class ProfileComponent implements OnInit {
         }
         
         this.saveSuccess = msg;
+
+        // Save Theme to localStorage
+        if (isThemeChanged) {
+          localStorage.setItem('theme', this.currentTheme);
+          this.originalTheme = this.currentTheme;
+        }
+
+        // Save Avatar to localStorage & currentUser state
+        if (isAvatarChanged) {
+          const updatedUser = { 
+            ...this.currentUser, 
+            Avatar: this.avatarPreview,
+            avatar: this.avatarPreview
+          };
+          this.currentUser = updatedUser;
+          this.originalAvatar = this.avatarPreview;
+          this.auth.setCurrentUser(updatedUser, this.auth.getToken()!);
+        }
 
         // Reset password fields
         this.currentPassword = '';

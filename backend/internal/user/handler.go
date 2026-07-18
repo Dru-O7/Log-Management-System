@@ -142,3 +142,32 @@ func (h *Handler) UpdatePhone(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Phone number updated successfully"})
 }
+
+// UpdateAvatar allows authenticated user to update their profile picture (avatar)
+func (h *Handler) UpdateAvatar(c echo.Context) error {
+	type Request struct {
+		Avatar string `json:"avatar"`
+	}
+
+	actorIDStr := c.Get("user_id").(string)
+	actorID, err := uuid.Parse(actorIDStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID in token"})
+	}
+
+	var req Request
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request payload"})
+	}
+
+	var user models.User
+	if err := h.db.First(&user, "id = ?", actorID).Error; err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+	}
+
+	if err := h.db.Model(&user).Update("avatar", req.Avatar).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update profile picture"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Profile picture updated successfully"})
+}

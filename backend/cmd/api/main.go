@@ -280,58 +280,61 @@ func seedData(gormDB *gorm.DB) {
 
 
 
-	// 3. Seed Document Types
-	docTypes := []models.DocumentType{
-		{
-			SchoolID:          school.ID,
-			Name:              "Staff Grievance",
-			Slug:              "staff-grievance",
-			WorkflowStages:    `[{"stage": 1, "role": "Teaching staff", "label": "Department Head", "optional": false}]`,
-			RequiredFields:    `[]`,
-			SlaHours:          72,
-			
-		},
-		{
-			SchoolID:          school.ID,
-			Name:              "Infrastructure Issue",
-			Slug:              "infrastructure-issue",
-			WorkflowStages:    `[{"stage": 1, "role": "School Admin", "label": "School Admin Final approval", "optional": false}]`,
-			RequiredFields:    `["reason", "urgency"]`,
-			SlaHours:          120,
-			
-		},
-		{
-			SchoolID:          school.ID,
-			Name:              "Disciplinary Issue",
-			Slug:              "disciplinary-issue",
-			WorkflowStages:    `[{"stage": 1, "role": "Teaching staff", "label": "Department Head", "optional": false}]`,
-			RequiredFields:    `["event_name", "event_date"]`,
-			SlaHours:          24,
-			
-		},
-		{
-			SchoolID:          school.ID,
-			Name:              "Audit Report",
-			Slug:              "audit-report",
-			WorkflowStages:    `[{"stage": 1, "role": "School Admin", "label": "School Admin Approval", "optional": false}]`,
-			RequiredFields:    `["audit_reason", "percentage"]`,
-			SlaHours:          96,
-		},
-		{
-			SchoolID:          school.ID,
-			Name:              "Official Circular",
-			Slug:              "official-circular",
-			WorkflowStages:    `[]`,
-			RequiredFields:    `[]`,
-			SlaHours:          0,
-		},
-	}
-	for i := range docTypes {
-		var existing models.DocumentType
-		if err := gormDB.Where("slug = ?", docTypes[i].Slug).First(&existing).Error; err != nil {
-			docTypes[i].ID = uuid.New()
-			gormDB.Create(&docTypes[i])
-			log.Printf("Seeded missing document type: %s", docTypes[i].Name)
+	// 3. Seed Document/Receipt Types for all schools
+	var schools []models.School
+	gormDB.Find(&schools)
+
+	for _, s := range schools {
+		docTypes := []models.DocumentType{
+			{
+				SchoolID:       s.ID,
+				Name:           "Staff Grievance",
+				Slug:           "staff-grievance",
+				WorkflowStages: `[{"stage": 1, "role": "Teaching staff", "label": "Department Head", "optional": false}]`,
+				RequiredFields: `[]`,
+				SlaHours:       72,
+			},
+			{
+				SchoolID:       s.ID,
+				Name:           "Infrastructure Issue",
+				Slug:           "infrastructure-issue",
+				WorkflowStages: `[{"stage": 1, "role": "School Admin", "label": "School Admin Final approval", "optional": false}]`,
+				RequiredFields: `["reason", "urgency"]`,
+				SlaHours:       120,
+			},
+			{
+				SchoolID:       s.ID,
+				Name:           "Disciplinary Issue",
+				Slug:           "disciplinary-issue",
+				WorkflowStages: `[{"stage": 1, "role": "Teaching staff", "label": "Department Head", "optional": false}]`,
+				RequiredFields: `["event_name", "event_date"]`,
+				SlaHours:       24,
+			},
+			{
+				SchoolID:       s.ID,
+				Name:           "Audit Report",
+				Slug:           "audit-report",
+				WorkflowStages: `[{"stage": 1, "role": "School Admin", "label": "School Admin Approval", "optional": false}]`,
+				RequiredFields: `["audit_reason", "percentage"]`,
+				SlaHours:       96,
+			},
+			{
+				SchoolID:       s.ID,
+				Name:           "Official Circular",
+				Slug:           "official-circular",
+				WorkflowStages: `[]`,
+				RequiredFields: `[]`,
+				SlaHours:       0,
+			},
+		}
+
+		for i := range docTypes {
+			var existing models.DocumentType
+			if err := gormDB.Where("school_id = ? AND slug = ?", s.ID, docTypes[i].Slug).First(&existing).Error; err != nil {
+				docTypes[i].ID = uuid.New()
+				gormDB.Create(&docTypes[i])
+				log.Printf("Seeded missing document type for school %s: %s", s.Name, docTypes[i].Name)
+			}
 		}
 	}
 }
