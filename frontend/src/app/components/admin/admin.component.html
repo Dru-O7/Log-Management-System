@@ -197,7 +197,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round"
                     d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
-                <input type="text" placeholder="Search name, email, role..." [(ngModel)]="userSearch"
+                <input type="text" placeholder="" [(ngModel)]="userSearch"
                   (ngModelChange)="applyUserFilter()">
               </div>
             </div>
@@ -293,7 +293,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round"
                   d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
-              <input type="text" placeholder="Search document types..." [(ngModel)]="docTypeSearch"
+              <input type="text" placeholder="" [(ngModel)]="docTypeSearch"
                 (ngModelChange)="applyDocTypeFilter()">
             </div>
           </div>
@@ -453,11 +453,11 @@
         <div class="form-row">
           <div class="form-group">
             <label for="admin-u-name">Full Name *</label>
-            <input id="admin-u-name" type="text" [(ngModel)]="userForm.name" placeholder="e.g. Alice Smith">
+            <input id="admin-u-name" type="text" [(ngModel)]="userForm.name" placeholder="">
           </div>
           <div class="form-group">
             <label for="admin-u-email">Email *</label>
-            <input id="admin-u-email" type="email" [(ngModel)]="userForm.email" placeholder="e.g. vikram@school.edu">
+            <input id="admin-u-email" type="email" [(ngModel)]="userForm.email" placeholder="">
           </div>
         </div>
         <div class="form-row">
@@ -508,11 +508,11 @@
         <div class="form-row">
           <div class="form-group">
             <label for="admin-dt-name">Name *</label>
-            <input id="admin-dt-name" type="text" [(ngModel)]="docTypeForm.name" placeholder="e.g. Leave Application">
+            <input id="admin-dt-name" type="text" [(ngModel)]="docTypeForm.name" placeholder="">
           </div>
           <div class="form-group">
             <label for="admin-dt-slug">Slug</label>
-            <input id="admin-dt-slug" type="text" [(ngModel)]="docTypeForm.slug" placeholder="e.g. leave-application">
+            <input id="admin-dt-slug" type="text" [(ngModel)]="docTypeForm.slug" placeholder="">
           </div>
         </div>
         <div class="form-row">
@@ -566,7 +566,7 @@
         <div *ngIf="schoolError" class="alert alert-error">{{schoolError}}</div>
         <div class="form-group">
           <label for="admin-s-name">School Name *</label>
-          <input id="admin-s-name" type="text" [(ngModel)]="schoolForm.name" placeholder="e.g. Greenwood High School">
+          <input id="admin-s-name" type="text" [(ngModel)]="schoolForm.name" placeholder="">
         </div>
         <div class="form-group">
           <label for="admin-s-slug">Slug</label>

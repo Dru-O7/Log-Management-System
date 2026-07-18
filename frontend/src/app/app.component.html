@@ -680,7 +680,7 @@
           <input
             type="text"
             class="block w-full pl-10 pr-12 py-2.5 text-xs bg-[var(--background)] border border-[var(--border)] rounded-xl focus:outline-none focus:bg-[var(--surface)] focus:ring-4 focus:ring-[var(--primary)]/10 focus:border-[var(--primary)] text-[var(--text-primary)] placeholder-slate-450 dark:placeholder-slate-500 transition-all duration-200 shadow-sm"
-            placeholder="Search file, title, tags..."
+            placeholder=""
             [ngModel]="searchQuery"
             (input)="onSearchInput($event)"
           />
@@ -1109,7 +1109,7 @@
             id="compose-subject"
             type="text"
             class="app-input"
-            placeholder="e.g. Inquiry regarding document submission"
+            placeholder=""
             [(ngModel)]="composeSubject"
             name="composeSubject"
           />
@@ -1126,7 +1126,7 @@
             id="compose-body"
             rows="4"
             class="app-input resize-none"
-            placeholder="Write your message here..."
+            placeholder=""
             [(ngModel)]="composeBody"
             name="composeBody"
           ></textarea>
