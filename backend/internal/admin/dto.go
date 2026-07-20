@@ -103,3 +103,32 @@ type UpdateSchoolRequest struct {
 	Slug     string `json:"slug"`
 	Settings string `json:"settings"`
 }
+
+// ── Role Management ───────────────────────────────────────────────────────────
+
+type RoleResponse struct {
+	ID             uuid.UUID  `json:"ID"`
+	RoleName       string     `json:"RoleName"`
+	IsAdminAccess  bool       `json:"IsAdminAccess"`
+	ParentRoleID   *uuid.UUID `json:"ParentRoleID"`
+	ParentRoleName string     `json:"ParentRoleName"`
+	TenantID       *uuid.UUID `json:"TenantID"`
+	CreatedBy      string     `json:"CreatedBy"`
+	Path           string     `json:"Path"`
+	CreatedAt      time.Time  `json:"CreatedAt"`
+	UpdatedAt      time.Time  `json:"UpdatedAt"`
+}
+
+type CreateRoleRequest struct {
+	RoleName      string     `json:"roleName"`
+	IsAdminAccess bool       `json:"isAdminAccess"`
+	ParentRoleID  *uuid.UUID `json:"parentRole"`
+	TenantID      *uuid.UUID `json:"tenantId"`
+}
+
+type UpdateRoleRequest struct {
+	RoleName      string     `json:"roleName"`
+	IsAdminAccess bool       `json:"isAdminAccess"`
+	ParentRoleID  *uuid.UUID `json:"parentRole"`
+	TenantID      *uuid.UUID `json:"tenantId"`
+}

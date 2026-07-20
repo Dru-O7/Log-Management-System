@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/google/uuid"
+	"office-file-sharing/backend/internal/admin"
 	"office-file-sharing/backend/internal/shared/models"
 )
 
@@ -20,7 +21,8 @@ func NewService(repo Repository) Service {
 func (s *service) GetUsers(actorID uuid.UUID) ([]UserResponse, error) {
 	// Find actor profile
 	var actor models.User
-	err := s.repo.(*repository).db.First(&actor, "id = ?", actorID).Error
+	db := s.repo.(*repository).db
+	err := db.First(&actor, "id = ?", actorID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -36,15 +38,15 @@ func (s *service) GetUsers(actorID uuid.UUID) ([]UserResponse, error) {
 			continue // skip self
 		}
 		// DHE or SuperAdmin or Admin sees everyone
-		if actor.Role == "DHE" || actor.Role == "SuperAdmin" || actor.Role == "Admin" {
+		if admin.HasAdminAccess(db, actor.Role) {
 			filtered = append(filtered, u)
-		} else if actor.Role == "School Admin" {
+		} else if admin.HasRole(db, actor.Role, "School Admin") {
 			// School Admin sees:
 			// 1. Everyone in their own school
 			// 2. DHE / System Admin users (to escalate/forward system files)
 			// 3. Other School Admins (to forward/share documents across schools)
 			if (u.SchoolID != nil && actor.SchoolID != nil && *u.SchoolID == *actor.SchoolID) ||
-				u.Role == "DHE" || u.Role == "School Admin" {
+				admin.HasRole(db, u.Role, "DHE") || admin.HasRole(db, u.Role, "School Admin") {
 				filtered = append(filtered, u)
 			}
 		} else {

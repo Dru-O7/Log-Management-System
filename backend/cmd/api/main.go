@@ -115,6 +115,54 @@ func seedData(gormDB *gorm.DB) {
 		log.Fatal("Failed to hash default password:", err)
 	}
 
+	// 2a. Seed hierarchical roles
+	rolesToSeed := []struct {
+		Name          string
+		IsAdminAccess bool
+		ParentName    string
+	}{
+		{"SuperAdmin", true, ""},
+		{"Admin", true, "SuperAdmin"},
+		{"DHE", true, "Admin"},
+		{"School Admin", true, "DHE"},
+		{"Teaching staff", false, "School Admin"},
+		{"non-teaching", false, "School Admin"},
+		{"vocational", false, "School Admin"},
+	}
+
+	for _, r := range rolesToSeed {
+		var existing models.Role
+		if err := gormDB.Where("role_name = ?", r.Name).First(&existing).Error; err != nil {
+			var parentID *uuid.UUID
+			var parentPath string
+			if r.ParentName != "" {
+				var p models.Role
+				if err := gormDB.Where("role_name = ?", r.ParentName).First(&p).Error; err == nil {
+					parentID = &p.ID
+					parentPath = p.Path
+				}
+			}
+			newID := uuid.New()
+			var path string
+			if parentID == nil {
+				path = "/" + newID.String() + "/"
+			} else {
+				path = parentPath + newID.String() + "/"
+			}
+			newRole := models.Role{
+				ID:            newID,
+				RoleName:      r.Name,
+				IsAdminAccess: r.IsAdminAccess,
+				ParentRoleID:  parentID,
+				TenantID:      nil,
+				CreatedBy:     "System",
+				Path:          path,
+			}
+			gormDB.Create(&newRole)
+			log.Printf("Seeded role: %s", r.Name)
+		}
+	}
+
 	type seedUser struct {
 		Name         string
 		Email        string
@@ -125,6 +173,8 @@ func seedData(gormDB *gorm.DB) {
 	}
 
 	seedUsers := []seedUser{
+		// SuperAdmin (No school)
+		{Name: "Super Admin", Email: "superadmin@school.edu", Role: "SuperAdmin", SchoolSlug: ""},
 		// vocational (Modern School)
 		{Name: "Aarav Sharma", Email: "aarav@school.edu", Role: "vocational", ClassSection: "Department A", SchoolSlug: "modern-school"},
 		{Name: "Ananya Iyer", Email: "ananya@school.edu", Role: "vocational", ClassSection: "Department B", SchoolSlug: "modern-school"},

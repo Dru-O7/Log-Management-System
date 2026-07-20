@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"office-file-sharing/backend/internal/admin"
 	"office-file-sharing/backend/internal/shared/models"
 
 	"github.com/google/uuid"
@@ -413,8 +414,9 @@ func (h *Handler) GetReports(c echo.Context) error {
 	userID, _ := uuid.Parse(authenticatedUserIDStr)
 
 	var user models.User
-	err := h.service.(*service).repo.(*repository).db.First(&user, "id = ?", userID).Error
-	if err != nil || user.Role != "Admin" || user.SchoolID == nil {
+	db := h.service.(*service).repo.(*repository).db
+	err := db.First(&user, "id = ?", userID).Error
+	if err != nil || !admin.HasAdminAccess(db, user.Role) || user.SchoolID == nil {
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Unauthorized to view school reports"})
 	}
 

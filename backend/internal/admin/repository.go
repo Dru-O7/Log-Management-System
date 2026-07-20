@@ -22,6 +22,14 @@ type Repository interface {
 	GetAllSchools(schoolID *string) ([]SchoolResponse, error)
 	GetSchoolByID(id uuid.UUID) (*models.School, error)
 	UpdateSchool(school *models.School) error
+	GetAllRoles(tenantID *string) ([]RoleResponse, error)
+	CreateRole(role *models.Role) error
+	GetRoleByID(id uuid.UUID) (*models.Role, error)
+	UpdateRole(role *models.Role) error
+	DeleteRole(id uuid.UUID) error
+	CheckUsersWithRole(roleName string) (bool, error)
+	CheckRoleHasChildren(id uuid.UUID) (bool, error)
+	GetRoleByName(name string, tenantID *uuid.UUID) (*models.Role, error)
 }
 
 type repository struct {
@@ -207,4 +215,87 @@ func (r *repository) GetSchoolByID(id uuid.UUID) (*models.School, error) {
 
 func (r *repository) UpdateSchool(school *models.School) error {
 	return r.db.Save(school).Error
+}
+
+func (r *repository) GetAllRoles(tenantID *string) ([]RoleResponse, error) {
+	var roles []models.Role
+	query := r.db.Preload("ParentRole").Order("role_name asc")
+	if tenantID != nil {
+		query = query.Where("tenant_id IS NULL OR tenant_id = ?", *tenantID)
+	}
+	if err := query.Find(&roles).Error; err != nil {
+		return nil, err
+	}
+
+	var resp []RoleResponse
+	for _, role := range roles {
+		parentName := ""
+		if role.ParentRole != nil {
+			parentName = role.ParentRole.RoleName
+		}
+		resp = append(resp, RoleResponse{
+			ID:             role.ID,
+			RoleName:       role.RoleName,
+			IsAdminAccess:  role.IsAdminAccess,
+			ParentRoleID:   role.ParentRoleID,
+			ParentRoleName: parentName,
+			TenantID:       role.TenantID,
+			CreatedBy:      role.CreatedBy,
+			Path:           role.Path,
+			CreatedAt:      role.CreatedAt,
+			UpdatedAt:      role.UpdatedAt,
+		})
+	}
+	return resp, nil
+}
+
+func (r *repository) CreateRole(role *models.Role) error {
+	return r.db.Create(role).Error
+}
+
+func (r *repository) GetRoleByID(id uuid.UUID) (*models.Role, error) {
+	var role models.Role
+	if err := r.db.Preload("ParentRole").First(&role, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
+func (r *repository) UpdateRole(role *models.Role) error {
+	return r.db.Save(role).Error
+}
+
+func (r *repository) DeleteRole(id uuid.UUID) error {
+	return r.db.Delete(&models.Role{}, "id = ?", id).Error
+}
+
+func (r *repository) CheckUsersWithRole(roleName string) (bool, error) {
+	var count int64
+	if err := r.db.Model(&models.User{}).Where("role = ?", roleName).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *repository) CheckRoleHasChildren(id uuid.UUID) (bool, error) {
+	var count int64
+	if err := r.db.Model(&models.Role{}).Where("parent_role_id = ?", id).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *repository) GetRoleByName(name string, tenantID *uuid.UUID) (*models.Role, error) {
+	var role models.Role
+	query := r.db.Preload("ParentRole").Where("role_name = ?", name)
+	if tenantID != nil {
+		// Order by tenant_id desc so non-null (tenant specific) comes first
+		query = query.Where("tenant_id IS NULL OR tenant_id = ?", *tenantID).Order("tenant_id desc")
+	} else {
+		query = query.Where("tenant_id IS NULL")
+	}
+	if err := query.First(&role).Error; err != nil {
+		return nil, err
+	}
+	return &role, nil
 }

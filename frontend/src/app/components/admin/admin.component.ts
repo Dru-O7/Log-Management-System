@@ -21,9 +21,21 @@ export class AdminComponent implements OnInit {
   loadingUsers: boolean = false;
   loadingDocTypes: boolean = false;
   loadingSchools: boolean = false;
+  loadingRoles: boolean = false;
 
   // Stats
   stats: any = {};
+
+  // Roles Management (Hierarchical CRUD)
+  dbRoles: any[] = [];
+  filteredDbRoles: any[] = [];
+  roleSearch: string = '';
+  showRoleModal: boolean = false;
+  editingRole: any = null;
+  roleForm: any = { roleName: '', isAdminAccess: false, parentRole: null };
+  roleError: string = '';
+  roleSuccess: string = '';
+  deleteConfirmRoleId: string = '';
 
   // Users
   users: any[] = [];
@@ -77,17 +89,26 @@ export class AdminComponent implements OnInit {
   schoolError: string = '';
   schoolSuccess: string = '';
 
-  roles = ['DHE', 'School Admin', 'Teaching staff', 'non-teaching', 'vocational'];
+  roles = ['SuperAdmin', 'DHE', 'School Admin', 'Teaching staff', 'non-teaching', 'vocational'];
 
   get availableRoles(): string[] {
-    if (this.isSuperAdmin) {
-      return this.roles;
+    const role = this.currentUser?.Role || this.currentUser?.role;
+    const allRoleNames = Array.from(new Set([
+      ...this.roles,
+      ...this.dbRoles.map(r => r.RoleName)
+    ]));
+
+    if (role === 'SuperAdmin') {
+      return allRoleNames;
     }
-    return this.roles.filter(r => r !== 'DHE');
+    if (role === 'DHE') {
+      return allRoleNames.filter(r => r !== 'SuperAdmin');
+    }
+    return allRoleNames.filter(r => r !== 'SuperAdmin' && r !== 'DHE' && r !== 'Admin');
   }
 
   onRoleChange() {
-    if (this.userForm.role === 'DHE') {
+    if (this.userForm.role === 'DHE' || this.userForm.role === 'SuperAdmin') {
       this.userForm.school_id = null;
     }
   }
@@ -110,6 +131,10 @@ export class AdminComponent implements OnInit {
     this.loadFileSubCategories();
     if (this.isSuperAdmin) {
       this.loadSchools();
+    }
+    const hasAdminAccess = (role === 'Admin' || role === 'SuperAdmin' || role === 'DHE' || role === 'School Admin');
+    if (hasAdminAccess) {
+      this.loadRoles();
     }
 
     // Determine active section based on the URL path
@@ -137,6 +162,14 @@ export class AdminComponent implements OnInit {
       }
     } else if (path.endsWith('/doctypes')) {
       this.activeSection = 'doctypes';
+    } else if (path.endsWith('/roles')) {
+      const hasAdminAccess = (role === 'Admin' || role === 'SuperAdmin' || role === 'DHE' || role === 'School Admin');
+      if (hasAdminAccess) {
+        this.activeSection = 'roles';
+      } else {
+        this.activeSection = 'overview';
+        this.router.navigate(['/admin']);
+      }
     } else {
       this.activeSection = 'overview';
     }
@@ -706,5 +739,118 @@ export class AdminComponent implements OnInit {
   formatDate(d: string): string {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // ── Role Management CRUD ───────────────────────────────────────────────────
+
+  loadRoles() {
+    this.loadingRoles = true;
+    this.roleError = '';
+    this.api.getRoles().subscribe({
+      next: (res: any) => {
+        this.dbRoles = res || [];
+        this.applyRoleFilter();
+        this.loadingRoles = false;
+      },
+      error: (err: any) => {
+        this.roleError = err.error?.error || 'Failed to load roles';
+        this.loadingRoles = false;
+      }
+    });
+  }
+
+  applyRoleFilter() {
+    const q = this.roleSearch.toLowerCase().trim();
+    if (!q) {
+      this.filteredDbRoles = [...this.dbRoles];
+    } else {
+      this.filteredDbRoles = this.dbRoles.filter(
+        r => r.RoleName.toLowerCase().includes(q) || (r.ParentRoleName && r.ParentRoleName.toLowerCase().includes(q))
+      );
+    }
+  }
+
+  openCreateRole() {
+    this.editingRole = null;
+    this.roleForm = { roleName: '', isAdminAccess: false, parentRole: null };
+    this.roleError = '';
+    this.roleSuccess = '';
+    this.showRoleModal = true;
+  }
+
+  openEditRole(role: any) {
+    this.editingRole = role;
+    this.roleForm = {
+      roleName: role.RoleName,
+      isAdminAccess: role.IsAdminAccess,
+      parentRole: role.ParentRoleID || null
+    };
+    this.roleError = '';
+    this.roleSuccess = '';
+    this.showRoleModal = true;
+  }
+
+  saveRole() {
+    if (!this.roleForm.roleName.trim()) {
+      this.roleError = 'Role name is required';
+      return;
+    }
+
+    const payload = {
+      roleName: this.roleForm.roleName,
+      isAdminAccess: this.roleForm.isAdminAccess,
+      parentRole: this.roleForm.parentRole || null
+    };
+
+    this.roleError = '';
+    this.roleSuccess = '';
+
+    if (this.editingRole) {
+      this.api.updateRole(this.editingRole.ID, payload).subscribe({
+        next: () => {
+          this.roleSuccess = 'Role updated successfully';
+          this.showRoleModal = false;
+          this.loadRoles();
+          setTimeout(() => this.roleSuccess = '', 3000);
+        },
+        error: (err: any) => {
+          this.roleError = err.error?.error || 'Failed to update role';
+        }
+      });
+    } else {
+      this.api.createRole(payload).subscribe({
+        next: () => {
+          this.roleSuccess = 'Role created successfully';
+          this.showRoleModal = false;
+          this.loadRoles();
+          setTimeout(() => this.roleSuccess = '', 3000);
+        },
+        error: (err: any) => {
+          this.roleError = err.error?.error || 'Failed to create role';
+        }
+      });
+    }
+  }
+
+  confirmDeleteRole(id: string) {
+    this.deleteConfirmRoleId = id;
+  }
+
+  deleteRole(id: string) {
+    this.roleError = '';
+    this.roleSuccess = '';
+    this.api.deleteRole(id).subscribe({
+      next: () => {
+        this.roleSuccess = 'Role deleted successfully';
+        this.deleteConfirmRoleId = '';
+        this.loadRoles();
+        setTimeout(() => this.roleSuccess = '', 3000);
+      },
+      error: (err: any) => {
+        this.roleError = err.error?.error || 'Failed to delete role';
+        this.deleteConfirmRoleId = '';
+        setTimeout(() => this.roleError = '', 4000);
+      }
+    });
   }
 }

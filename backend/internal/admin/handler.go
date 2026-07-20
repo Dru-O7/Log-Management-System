@@ -193,3 +193,93 @@ func (h *Handler) UpdateSchool(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, school)
 }
+
+// GetRoles lists all roles
+func (h *Handler) GetRoles(c echo.Context) error {
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	roles, err := h.service.GetAllRoles(actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+// CreateRole creates a new role
+func (h *Handler) CreateRole(c echo.Context) error {
+	var req CreateRoleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	role, err := h.service.CreateRole(req, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusCreated, role)
+}
+
+// UpdateRole updates an existing role
+func (h *Handler) UpdateRole(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid role ID"})
+	}
+	var req UpdateRoleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	role, err := h.service.UpdateRole(id, req, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, role)
+}
+
+// DeleteRole deletes a role
+func (h *Handler) DeleteRole(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid role ID"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	if err := h.service.DeleteRole(id, actorRole, actorSchoolID); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "Role deleted successfully"})
+}

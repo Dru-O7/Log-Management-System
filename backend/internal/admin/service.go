@@ -21,6 +21,10 @@ type Service interface {
 	DeleteDocumentType(id uuid.UUID) error
 	GetAllSchools(schoolID *string) ([]SchoolResponse, error)
 	UpdateSchool(id uuid.UUID, req UpdateSchoolRequest) (*SchoolResponse, error)
+	GetAllRoles(actorRole string, actorSchoolID *uuid.UUID) ([]RoleResponse, error)
+	CreateRole(req CreateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error)
+	UpdateRole(id uuid.UUID, req UpdateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error)
+	DeleteRole(id uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error
 }
 
 type service struct {
@@ -363,4 +367,353 @@ func (s *service) UpdateSchool(id uuid.UUID, req UpdateSchoolRequest) (*SchoolRe
 		Settings:  school.Settings,
 		CreatedAt: school.CreatedAt,
 	}, nil
+}
+
+func (s *service) GetAllRoles(actorRole string, actorSchoolID *uuid.UUID) ([]RoleResponse, error) {
+	var schoolIDStr *string
+	// Global administrative roles can see all roles (no tenant scoping)
+	globalAdminRoles := map[string]bool{
+		"SuperAdmin": true,
+		"Admin":      true,
+		"DHE":        true,
+	}
+	if !globalAdminRoles[actorRole] {
+		if actorSchoolID != nil {
+			val := actorSchoolID.String()
+			schoolIDStr = &val
+		} else {
+			// Non-global roles must have a school context to list roles
+			return nil, errors.New("school context required to list roles")
+		}
+	}
+	return s.repo.GetAllRoles(schoolIDStr)
+}
+
+func (s *service) CreateRole(req CreateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error) {
+	if strings.TrimSpace(req.RoleName) == "" {
+		return nil, errors.New("role name is required")
+	}
+
+	// Enforce global SuperAdmin uniqueness
+	if strings.EqualFold(req.RoleName, "SuperAdmin") {
+		return nil, errors.New("creation of SuperAdmin role is prohibited")
+	}
+
+	// Find actor's role record to verify boundaries
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, errors.New("unauthorized: actor role not found in system hierarchy")
+	}
+
+	// Determine tenant scope
+	var targetTenantID *uuid.UUID
+	if actorRole == "SuperAdmin" {
+		targetTenantID = req.TenantID
+	} else {
+		targetTenantID = actorSchoolID
+	}
+
+	// Scoped uniqueness check
+	var schoolIDStr *string
+	if targetTenantID != nil {
+		val := targetTenantID.String()
+		schoolIDStr = &val
+	}
+	existingRoles, err := s.repo.GetAllRoles(schoolIDStr)
+	if err == nil {
+		for _, er := range existingRoles {
+			if strings.EqualFold(er.RoleName, req.RoleName) {
+				return nil, errors.New("role name must be unique within this tenant scope")
+			}
+		}
+	}
+
+	newID := uuid.New()
+	var parentRoleID *uuid.UUID
+	var path string
+
+	if req.ParentRoleID != nil {
+		parentRole, err := s.repo.GetRoleByID(*req.ParentRoleID)
+		if err != nil {
+			return nil, errors.New("parent role not found")
+		}
+
+		// Non-SuperAdmins can only parent to roles within their own subtree
+		if actorRole != "SuperAdmin" {
+			isDescendant := strings.HasPrefix(parentRole.Path, actorRoleRec.Path)
+			isSelf := parentRole.ID == actorRoleRec.ID
+			if !isDescendant && !isSelf {
+				return nil, errors.New("cannot parent role outside your own subtree boundary")
+			}
+		}
+
+		// Enforce tenant scoping
+		if parentRole.TenantID != nil && (targetTenantID == nil || *parentRole.TenantID != *targetTenantID) {
+			return nil, errors.New("cannot parent role to another tenant's role")
+		}
+
+		parentRoleID = req.ParentRoleID
+		path = parentRole.Path + newID.String() + "/"
+	} else {
+		// Only SuperAdmins can create top-level/root roles
+		if actorRole != "SuperAdmin" {
+			return nil, errors.New("parent role is required for non-SuperAdmins")
+		}
+		path = "/" + newID.String() + "/"
+	}
+
+	// Max tree depth check (10 levels)
+	depth := strings.Count(path, "/") - 1
+	if depth > 10 {
+		return nil, errors.New("maximum tree hierarchy depth of 10 exceeded")
+	}
+
+	// Elevation protection
+	if req.IsAdminAccess && !actorRoleRec.IsAdminAccess {
+		return nil, errors.New("cannot elevate administrative access above your own role level")
+	}
+
+	role := &models.Role{
+		ID:            newID,
+		RoleName:      req.RoleName,
+		IsAdminAccess: req.IsAdminAccess,
+		ParentRoleID:  parentRoleID,
+		TenantID:      targetTenantID,
+		CreatedBy:     actorRole,
+		Path:          path,
+	}
+
+	if err := s.repo.CreateRole(role); err != nil {
+		return nil, err
+	}
+
+	parentName := ""
+	if role.ParentRoleID != nil {
+		p, err := s.repo.GetRoleByID(*role.ParentRoleID)
+		if err == nil {
+			parentName = p.RoleName
+		}
+	}
+
+	return &RoleResponse{
+		ID:             role.ID,
+		RoleName:       role.RoleName,
+		IsAdminAccess:  role.IsAdminAccess,
+		ParentRoleID:   role.ParentRoleID,
+		ParentRoleName: parentName,
+		TenantID:       role.TenantID,
+		CreatedBy:      role.CreatedBy,
+		Path:           role.Path,
+		CreatedAt:      role.CreatedAt,
+		UpdatedAt:      role.UpdatedAt,
+	}, nil
+}
+
+func (s *service) UpdateRole(id uuid.UUID, req UpdateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error) {
+	role, err := s.repo.GetRoleByID(id)
+	if err != nil {
+		return nil, errors.New("role not found")
+	}
+
+	// SuperAdmin role protections
+	if strings.EqualFold(role.RoleName, "SuperAdmin") {
+		return nil, errors.New("the system SuperAdmin role cannot be modified")
+	}
+	if strings.EqualFold(req.RoleName, "SuperAdmin") && !strings.EqualFold(role.RoleName, "SuperAdmin") {
+		return nil, errors.New("cannot rename role to SuperAdmin")
+	}
+
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, errors.New("unauthorized: actor role not found in system hierarchy")
+	}
+
+	// Subtree boundary validation: must be a strict descendant of actor's role
+	if actorRole != "SuperAdmin" {
+		isDescendant := strings.HasPrefix(role.Path, actorRoleRec.Path)
+		isSelf := role.ID == actorRoleRec.ID
+		if !isDescendant || isSelf {
+			return nil, errors.New("access denied: you can only update roles within your own subtree")
+		}
+	}
+
+	// Scoped uniqueness check if name is changing
+	if req.RoleName != "" && !strings.EqualFold(req.RoleName, role.RoleName) {
+		var schoolIDStr *string
+		if role.TenantID != nil {
+			val := role.TenantID.String()
+			schoolIDStr = &val
+		}
+		existingRoles, err := s.repo.GetAllRoles(schoolIDStr)
+		if err == nil {
+			for _, er := range existingRoles {
+				if strings.EqualFold(er.RoleName, req.RoleName) {
+					return nil, errors.New("role name must be unique within this tenant scope")
+				}
+			}
+		}
+		role.RoleName = req.RoleName
+	}
+
+	// Elevation protection
+	if req.IsAdminAccess && !actorRoleRec.IsAdminAccess {
+		return nil, errors.New("cannot elevate administrative access above your own role level")
+	}
+	role.IsAdminAccess = req.IsAdminAccess
+
+	// Tenant reassignment validation
+	if actorRole == "SuperAdmin" {
+		role.TenantID = req.TenantID
+	}
+
+	// Handle parent reparenting and recursive materialized path updates
+	parentChanged := false
+	if req.ParentRoleID != nil {
+		if role.ParentRoleID == nil || *req.ParentRoleID != *role.ParentRoleID {
+			newParentRole, err := s.repo.GetRoleByID(*req.ParentRoleID)
+			if err != nil {
+				return nil, errors.New("proposed parent role not found")
+			}
+
+			// Verify actor has access to new parent role
+			if actorRole != "SuperAdmin" {
+				isParentDescendant := strings.HasPrefix(newParentRole.Path, actorRoleRec.Path)
+				isParentSelf := newParentRole.ID == actorRoleRec.ID
+				if !isParentDescendant && !isParentSelf {
+					return nil, errors.New("cannot reparent role to a target outside your subtree")
+				}
+			}
+
+			// Prevent circular cycles
+			isCircular := newParentRole.ID == role.ID || strings.Contains(newParentRole.Path, "/"+role.ID.String()+"/")
+			if isCircular {
+				return nil, errors.New("circular hierarchy reference detected")
+			}
+
+			// Scoping check
+			if newParentRole.TenantID != nil && (role.TenantID == nil || *newParentRole.TenantID != *role.TenantID) {
+				return nil, errors.New("cannot parent role to another tenant's role")
+			}
+
+			oldPath := role.Path
+			newPath := newParentRole.Path + role.ID.String() + "/"
+
+			// Max tree depth check
+			depth := strings.Count(newPath, "/") - 1
+			if depth > 10 {
+				return nil, errors.New("maximum tree hierarchy depth of 10 exceeded")
+			}
+
+			role.ParentRoleID = req.ParentRoleID
+			role.Path = newPath
+			parentChanged = true
+
+			// Cascade path update to all descendants recursively
+			repoImpl, ok := s.repo.(*repository)
+			if ok {
+				var descendants []models.Role
+				if err := repoImpl.db.Where("path LIKE ?", oldPath+"%").Find(&descendants).Error; err == nil {
+					for _, desc := range descendants {
+						desc.Path = strings.Replace(desc.Path, oldPath, newPath, 1)
+						repoImpl.db.Save(&desc)
+					}
+				}
+			}
+		}
+	} else if role.ParentRoleID != nil {
+		// Parent changed to nil
+		if actorRole != "SuperAdmin" {
+			return nil, errors.New("parent role is required for non-SuperAdmins")
+		}
+
+		oldPath := role.Path
+		newPath := "/" + role.ID.String() + "/"
+
+		role.ParentRoleID = nil
+		role.Path = newPath
+		parentChanged = true
+
+		repoImpl, ok := s.repo.(*repository)
+		if ok {
+			var descendants []models.Role
+			if err := repoImpl.db.Where("path LIKE ?", oldPath+"%").Find(&descendants).Error; err == nil {
+				for _, desc := range descendants {
+					desc.Path = strings.Replace(desc.Path, oldPath, newPath, 1)
+					repoImpl.db.Save(&desc)
+				}
+			}
+		}
+	}
+	_ = parentChanged
+
+	if err := s.repo.UpdateRole(role); err != nil {
+		return nil, err
+	}
+
+	parentName := ""
+	if role.ParentRoleID != nil {
+		p, err := s.repo.GetRoleByID(*role.ParentRoleID)
+		if err == nil {
+			parentName = p.RoleName
+		}
+	}
+
+	return &RoleResponse{
+		ID:             role.ID,
+		RoleName:       role.RoleName,
+		IsAdminAccess:  role.IsAdminAccess,
+		ParentRoleID:   role.ParentRoleID,
+		ParentRoleName: parentName,
+		TenantID:       role.TenantID,
+		CreatedBy:      role.CreatedBy,
+		Path:           role.Path,
+		CreatedAt:      role.CreatedAt,
+		UpdatedAt:      role.UpdatedAt,
+	}, nil
+}
+
+func (s *service) DeleteRole(id uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error {
+	role, err := s.repo.GetRoleByID(id)
+	if err != nil {
+		return errors.New("role not found")
+	}
+
+	// SuperAdmin role protections
+	if strings.EqualFold(role.RoleName, "SuperAdmin") {
+		return errors.New("the system SuperAdmin role cannot be deleted")
+	}
+
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return errors.New("unauthorized: actor role not found in system hierarchy")
+	}
+
+	// Subtree boundary validation: must be a strict descendant of actor's role
+	if actorRole != "SuperAdmin" {
+		isDescendant := strings.HasPrefix(role.Path, actorRoleRec.Path)
+		isSelf := role.ID == actorRoleRec.ID
+		if !isDescendant || isSelf {
+			return errors.New("access denied: you can only delete roles within your own subtree")
+		}
+	}
+
+	// Ensure no users are assigned to this role
+	hasUsers, err := s.repo.CheckUsersWithRole(role.RoleName)
+	if err != nil {
+		return err
+	}
+	if hasUsers {
+		return errors.New("cannot delete role: role is currently assigned to active users")
+	}
+
+	// Ensure no descendant child roles exist
+	hasChildren, err := s.repo.CheckRoleHasChildren(role.ID)
+	if err != nil {
+		return err
+	}
+	if hasChildren {
+		return errors.New("cannot delete role: delete descendant child roles first")
+	}
+
+	return s.repo.DeleteRole(id)
 }

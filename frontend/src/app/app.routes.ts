@@ -28,6 +28,7 @@ export const routes: Routes = [
   { path: 'admin/users',    component: AdminComponent,     canActivate: [authGuard, adminGuard] },
   { path: 'admin/schools',  component: AdminComponent,     canActivate: [authGuard, adminGuard] },
   { path: 'admin/doctypes', component: AdminComponent,     canActivate: [authGuard, adminGuard] },
+  { path: 'admin/roles',    component: AdminComponent,     canActivate: [authGuard, adminGuard] },
   // Wildcard 404 Route
   { path: '**',         component: NotFoundComponent }
 ];

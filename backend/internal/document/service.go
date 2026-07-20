@@ -23,6 +23,7 @@ import (
 
 	"office-file-sharing/backend/internal/shared/email"
 	"office-file-sharing/backend/internal/shared/models"
+	"office-file-sharing/backend/internal/admin"
 
 	"github.com/google/uuid"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
@@ -856,7 +857,7 @@ func (s *service) authorizeDocAccess(doc *models.Document, userID uuid.UUID) err
 	if doc.FileID != nil {
 		var file models.File
 		if err := s.repo.(*repository).db.First(&file, "id = ?", *doc.FileID).Error; err == nil {
-			if user.Role == "DHE" {
+			if admin.HasRole(s.repo.(*repository).db, user.Role, "DHE") {
 				return nil
 			}
 			if file.CurrentOwnerID == userID || file.CreatorID == userID {
@@ -869,7 +870,7 @@ func (s *service) authorizeDocAccess(doc *models.Document, userID uuid.UUID) err
 	}
 
 	// Principal has school-wide access
-	if user.Role == "Principal" {
+	if admin.HasRole(s.repo.(*repository).db, user.Role, "Principal") {
 		if doc.SchoolID != nil && user.SchoolID != nil && *doc.SchoolID == *user.SchoolID {
 			return nil
 		}
@@ -896,7 +897,7 @@ func (s *service) authorizeDocAccess(doc *models.Document, userID uuid.UUID) err
 			return false
 		}
 
-		if user.Role == "Teacher" || user.Role == "Student" {
+		if admin.HasRole(s.repo.(*repository).db, user.Role, "Teacher") || user.Role == "Student" {
 			if classMatches(user.ClassSection) {
 				return nil
 			}
@@ -919,11 +920,11 @@ func (s *service) authorizeDocAccess(doc *models.Document, userID uuid.UUID) err
 	}
 
 	// Teacher has access to class submissions or history
-	if user.Role == "Teacher" {
+	if admin.HasRole(s.repo.(*repository).db, user.Role, "Teacher") {
 		// 1. Check if uploader is a Student in Teacher's ClassSection
 		var uploaderUser models.User
 		if err := s.repo.(*repository).db.First(&uploaderUser, "id = ?", doc.UploaderID).Error; err == nil {
-			if uploaderUser.Role == "Student" && uploaderUser.ClassSection != "" && uploaderUser.ClassSection == user.ClassSection {
+			if (admin.HasRole(s.repo.(*repository).db, uploaderUser.Role, "Student") || uploaderUser.Role == "Student") && uploaderUser.ClassSection != "" && uploaderUser.ClassSection == user.ClassSection {
 				return nil
 			}
 		}
@@ -1845,7 +1846,7 @@ func (s *service) GetFileDetails(fileID, authenticatedUserID uuid.UUID) (*FileDe
 	}
 
 	isCurrentOwner := file.CurrentOwnerID == authenticatedUserID
-	isDHE := user.Role == "DHE"
+	isDHE := admin.HasRole(s.repo.(*repository).db, user.Role, "DHE")
 	isCreator := file.CreatorID == authenticatedUserID
 	isSameSchool := file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID
 
@@ -2013,7 +2014,7 @@ func (s *service) CreateNote(fileID, authenticatedUserID uuid.UUID, req CreateNo
 		return nil, errors.New("unauthorized")
 	}
 	hasAccess := false
-	if user.Role == "DHE" {
+	if admin.HasRole(s.repo.(*repository).db, user.Role, "DHE") {
 		hasAccess = true
 	} else if file.CurrentOwnerID == authenticatedUserID {
 		hasAccess = true
@@ -2069,7 +2070,7 @@ func (s *service) UpdateNote(noteID, authenticatedUserID uuid.UUID, content stri
 	}
 
 	hasAccess := false
-	if user.Role == "DHE" {
+	if admin.HasRole(s.repo.(*repository).db, user.Role, "DHE") {
 		hasAccess = true
 	} else if file.CurrentOwnerID == authenticatedUserID {
 		hasAccess = true

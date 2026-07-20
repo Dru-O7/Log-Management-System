@@ -289,3 +289,25 @@ func (base *Note) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	return
 }
+
+type Role struct {
+	ID            uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	RoleName      string     `gorm:"size:100;not null;uniqueIndex:idx_role_name_tenant"`
+	IsAdminAccess bool       `gorm:"default:false;not null"`
+	ParentRoleID  *uuid.UUID `gorm:"type:uuid"`
+	TenantID      *uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_role_name_tenant"`
+	CreatedBy     string     `gorm:"size:255;not null"`
+	Path          string     `gorm:"type:text;not null"`
+
+	ParentRole *Role   `gorm:"foreignKey:ParentRoleID"`
+	Tenant     *School `gorm:"foreignKey:TenantID"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+func (base *Role) BeforeCreate(tx *gorm.DB) (err error) {
+	if base.ID == uuid.Nil {
+		base.ID = uuid.New()
+	}
+	return
+}

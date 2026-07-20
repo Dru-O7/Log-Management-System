@@ -222,4 +222,20 @@ export class ApiService {
   recallDocument(docId: string) {
     return this.http.post<any>(`${this.apiUrl}/documents/${docId}/recall`, {});
   }
+
+  getRoles() {
+    return this.http.get<any[]>(`${this.apiUrl}/admin/roles`);
+  }
+
+  createRole(data: any) {
+    return this.http.post<any>(`${this.apiUrl}/admin/roles`, data);
+  }
+
+  updateRole(id: string, data: any) {
+    return this.http.put<any>(`${this.apiUrl}/admin/roles/${id}`, data);
+  }
+
+  deleteRole(id: string) {
+    return this.http.delete<any>(`${this.apiUrl}/admin/roles/${id}`);
+  }
 }

@@ -3,12 +3,61 @@ package admin
 import (
 	"net/http"
 	"office-file-sharing/backend/internal/shared/middleware"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 
 	"office-file-sharing/backend/internal/shared/models"
 )
+
+// HasRole checks if the roleName inherits from targetRole in the tree hierarchy.
+func HasRole(db *gorm.DB, roleName string, targetRole string) bool {
+	if roleName == targetRole {
+		return true
+	}
+
+	var uRole models.Role
+	if err := db.First(&uRole, "role_name = ?", roleName).Error; err != nil {
+		return false
+	}
+
+	var tRole models.Role
+	if err := db.First(&tRole, "role_name = ?", targetRole).Error; err != nil {
+		return false
+	}
+
+	return strings.HasPrefix(uRole.Path, tRole.Path)
+}
+
+// HasAdminAccess helper recursively checks if a role has administrative access.
+func HasAdminAccess(db *gorm.DB, roleName string) bool {
+	if roleName == "SuperAdmin" || roleName == "Admin" || roleName == "DHE" || roleName == "School Admin" {
+		return true
+	}
+
+	var role models.Role
+	if err := db.First(&role, "role_name = ?", roleName).Error; err != nil {
+		return false
+	}
+
+	curr := &role
+	for curr != nil {
+		if curr.IsAdminAccess {
+			return true
+		}
+		if curr.ParentRoleID == nil {
+			break
+		}
+		var parent models.Role
+		if err := db.First(&parent, "id = ?", *curr.ParentRoleID).Error; err != nil {
+			break
+		}
+		curr = &parent
+	}
+
+	return false
+}
 
 // adminAccessMiddleware ensures the user has the "Admin" role.
 func adminAccessMiddleware(db *gorm.DB) echo.MiddlewareFunc {
@@ -24,7 +73,7 @@ func adminAccessMiddleware(db *gorm.DB) echo.MiddlewareFunc {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
 			}
 
-			if user.Role != "Admin" && user.Role != "SuperAdmin" && user.Role != "DHE" && user.Role != "School Admin" {
+			if !HasAdminAccess(db, user.Role) {
 				return c.JSON(http.StatusForbidden, map[string]string{"error": "Access denied: Admin role required"})
 			}
 
@@ -32,6 +81,29 @@ func adminAccessMiddleware(db *gorm.DB) echo.MiddlewareFunc {
 			c.Set("actor_role", user.Role)
 			if user.SchoolID != nil {
 				c.Set("actor_school_id", user.SchoolID.String())
+			}
+
+			return next(c)
+		}
+	}
+}
+
+// superAdminAccessMiddleware ensures the user has the "SuperAdmin" role.
+func superAdminAccessMiddleware(db *gorm.DB) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			userIDStr, ok := c.Get("user_id").(string)
+			if !ok || userIDStr == "" {
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+			}
+
+			var user models.User
+			if err := db.First(&user, "id = ?", userIDStr).Error; err != nil {
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+			}
+
+			if user.Role != "SuperAdmin" {
+				return c.JSON(http.StatusForbidden, map[string]string{"error": "Access denied: SuperAdmin role required"})
 			}
 
 			return next(c)
@@ -65,5 +137,12 @@ func RegisterRoutes(g *echo.Group, handler *Handler, jwtSecret []byte, db *gorm.
 	// School management (Admin only)
 	admin.GET("/schools", handler.GetSchools)
 	admin.PUT("/schools/:id", handler.UpdateSchool)
+
+	// Role management (Subtree scoping validated in service layer)
+	roles := admin.Group("/roles")
+	roles.GET("", handler.GetRoles)
+	roles.POST("", handler.CreateRole)
+	roles.PUT("/:id", handler.UpdateRole)
+	roles.DELETE("/:id", handler.DeleteRole)
 }
 
