@@ -221,6 +221,43 @@ func seedData(gormDB *gorm.DB) {
 		}
 	}
 
+	// 2b. Seed organizations matching the schools
+	var schoolsList []models.School
+	gormDB.Find(&schoolsList)
+	for _, sch := range schoolsList {
+		var count int64
+		gormDB.Model(&models.Organization{}).Where("tenant_id = ?", sch.ID).Count(&count)
+		if count == 0 {
+			var adminUser models.User
+			var pocID *uuid.UUID
+			adminEmail := ""
+			switch sch.Slug {
+			case "greenwood-high":
+				adminEmail = "rahul@school.edu"
+			case "dps":
+				adminEmail = "gaurav@school.edu"
+			case "modern-school":
+				adminEmail = "shalini@school.edu"
+			}
+			if adminEmail != "" {
+				if err := gormDB.Where("email = ?", adminEmail).First(&adminUser).Error; err == nil {
+					pocID = &adminUser.ID
+				}
+			}
+
+			newOrg := models.Organization{
+				ID:               uuid.New(),
+				OrganizationName: sch.Name,
+				Type:             "school",
+				PointOfContactID: pocID,
+				CreatedBy:        "SuperAdmin",
+				TenantID:         &sch.ID,
+			}
+			gormDB.Create(&newOrg)
+			log.Printf("Seeded organization for school: %s", sch.Name)
+		}
+	}
+
 
 
 	// 3. Seed Document/Receipt Types for all schools

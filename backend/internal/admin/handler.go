@@ -109,14 +109,17 @@ func (h *Handler) DeleteUser(c echo.Context) error {
 
 // GetDocumentTypes returns all document types across all schools
 func (h *Handler) GetDocumentTypes(c echo.Context) error {
-	schoolIDStr, _ := c.Get("actor_school_id").(string)
-	var schoolID *string
-	if schoolIDStr != "" {
-		schoolID = &schoolIDStr
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
 	}
-	dts, err := h.service.GetAllDocumentTypes(schoolID)
+	dts, err := h.service.GetAllDocumentTypes(actorRole, actorSchoolID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch document types"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, dts)
 }
@@ -127,7 +130,17 @@ func (h *Handler) CreateDocumentType(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
-	dt, err := h.service.CreateDocumentType(req)
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	dt, err := h.service.CreateDocumentType(req, actorRole, actorSchoolID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -282,4 +295,200 @@ func (h *Handler) DeleteRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"message": "Role deleted successfully"})
+}
+
+// ── Organization CRUD (SuperAdmin only) ──────────────────────────────────────
+
+func (h *Handler) GetOrganizations(c echo.Context) error {
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	orgs, err := h.service.GetAllOrganizations(actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, orgs)
+}
+
+func (h *Handler) CreateOrganization(c echo.Context) error {
+	var req CreateOrganizationRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	org, err := h.service.CreateOrganization(req, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusCreated, org)
+}
+
+func (h *Handler) UpdateOrganization(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid organization ID"})
+	}
+
+	var req UpdateOrganizationRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	org, err := h.service.UpdateOrganization(id, req, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, org)
+}
+
+func (h *Handler) DeleteOrganization(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid organization ID"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	if err := h.service.DeleteOrganization(id, actorRole, actorSchoolID); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "Organization deleted successfully"})
+}
+
+// ── Peer Connection Handlers ──────────────────────────────────────────────────
+
+func (h *Handler) GetPeerConnections(c echo.Context) error {
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	conns, err := h.service.GetPeerConnections(actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, conns)
+}
+
+func (h *Handler) RequestPeerConnection(c echo.Context) error {
+	var req CreatePeerConnectionRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	conn, err := h.service.RequestPeerConnection(req, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusCreated, conn)
+}
+
+func (h *Handler) AcceptPeerConnection(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid connection ID"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	conn, err := h.service.AcceptPeerConnection(id, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, conn)
+}
+
+func (h *Handler) RejectPeerConnection(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid connection ID"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	conn, err := h.service.RejectPeerConnection(id, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, conn)
+}
+
+func (h *Handler) RevokePeerConnection(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid connection ID"})
+	}
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	conn, err := h.service.RevokePeerConnection(id, actorRole, actorSchoolID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, conn)
 }

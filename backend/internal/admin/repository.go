@@ -30,6 +30,15 @@ type Repository interface {
 	CheckUsersWithRole(roleName string) (bool, error)
 	CheckRoleHasChildren(id uuid.UUID) (bool, error)
 	GetRoleByName(name string, tenantID *uuid.UUID) (*models.Role, error)
+	GetAllOrganizations() ([]models.Organization, error)
+	GetOrganizationByID(id uuid.UUID) (*models.Organization, error)
+	CreateOrganization(org *models.Organization) error
+	UpdateOrganization(org *models.Organization) error
+	DeleteOrganization(id uuid.UUID) error
+	GetPeerConnectionByID(id uuid.UUID) (*models.PeerConnection, error)
+	GetPeerConnectionsByRole(roleID uuid.UUID) ([]models.PeerConnection, error)
+	CreatePeerConnection(pc *models.PeerConnection) error
+	UpdatePeerConnection(pc *models.PeerConnection) error
 }
 
 type repository struct {
@@ -298,4 +307,58 @@ func (r *repository) GetRoleByName(name string, tenantID *uuid.UUID) (*models.Ro
 		return nil, err
 	}
 	return &role, nil
+}
+
+func (r *repository) GetAllOrganizations() ([]models.Organization, error) {
+	var orgs []models.Organization
+	if err := r.db.Preload("ParentOrg").Preload("PointOfContact").Find(&orgs).Error; err != nil {
+		return nil, err
+	}
+	return orgs, nil
+}
+
+func (r *repository) GetOrganizationByID(id uuid.UUID) (*models.Organization, error) {
+	var org models.Organization
+	if err := r.db.Preload("ParentOrg").Preload("PointOfContact").First(&org, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &org, nil
+}
+
+func (r *repository) CreateOrganization(org *models.Organization) error {
+	return r.db.Create(org).Error
+}
+
+func (r *repository) UpdateOrganization(org *models.Organization) error {
+	return r.db.Save(org).Error
+}
+
+func (r *repository) DeleteOrganization(id uuid.UUID) error {
+	return r.db.Delete(&models.Organization{}, "id = ?", id).Error
+}
+
+func (r *repository) GetPeerConnectionByID(id uuid.UUID) (*models.PeerConnection, error) {
+	var pc models.PeerConnection
+	if err := r.db.Preload("SenderRole").Preload("TargetRole").First(&pc, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &pc, nil
+}
+
+func (r *repository) GetPeerConnectionsByRole(roleID uuid.UUID) ([]models.PeerConnection, error) {
+	var pcs []models.PeerConnection
+	if err := r.db.Preload("SenderRole").Preload("TargetRole").
+		Where("sender_role_id = ? OR target_role_id = ?", roleID, roleID).
+		Find(&pcs).Error; err != nil {
+		return nil, err
+	}
+	return pcs, nil
+}
+
+func (r *repository) CreatePeerConnection(pc *models.PeerConnection) error {
+	return r.db.Create(pc).Error
+}
+
+func (r *repository) UpdatePeerConnection(pc *models.PeerConnection) error {
+	return r.db.Save(pc).Error
 }

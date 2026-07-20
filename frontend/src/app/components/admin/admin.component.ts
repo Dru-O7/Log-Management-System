@@ -91,20 +91,31 @@ export class AdminComponent implements OnInit {
 
   roles = ['SuperAdmin', 'DHE', 'School Admin', 'Teaching staff', 'non-teaching', 'vocational'];
 
-  get availableRoles(): string[] {
-    const role = this.currentUser?.Role || this.currentUser?.role;
-    const allRoleNames = Array.from(new Set([
-      ...this.roles,
-      ...this.dbRoles.map(r => r.RoleName)
-    ]));
+  get parentOrganizations(): any[] {
+    return this.schools.filter(o => o.Type?.toLowerCase() !== 'school');
+  }
 
-    if (role === 'SuperAdmin') {
-      return allRoleNames;
+  get availableRoles(): string[] {
+    const actorRole = this.currentUser?.Role || this.currentUser?.role;
+    if (actorRole === 'SuperAdmin') {
+      return Array.from(new Set([
+        ...this.roles,
+        ...this.dbRoles.map(r => r.RoleName)
+      ]));
     }
-    if (role === 'DHE') {
-      return allRoleNames.filter(r => r !== 'SuperAdmin');
+
+    const actorRoleRec = this.dbRoles.find(r => r.RoleName === actorRole);
+    if (!actorRoleRec) {
+      return [actorRole];
     }
-    return allRoleNames.filter(r => r !== 'SuperAdmin' && r !== 'DHE' && r !== 'Admin');
+
+    const allowed = this.dbRoles.filter(r => {
+      const isSame = r.RoleName === actorRole;
+      const isChild = r.ParentRoleID === actorRoleRec.ID || r.ParentRoleName === actorRole;
+      return isSame || isChild;
+    });
+
+    return Array.from(new Set(allowed.map(r => r.RoleName)));
   }
 
   onRoleChange() {
@@ -243,7 +254,7 @@ export class AdminComponent implements OnInit {
     this.userForm = {
       name: '',
       email: '',
-      role: 'vocational',
+      role: this.availableRoles[0] || 'vocational',
       password: '',
       class_section: '',
       subject: '',
@@ -478,33 +489,89 @@ export class AdminComponent implements OnInit {
 
   loadSchools() {
     this.loadingSchools = true;
-    this.api.getAdminSchools().subscribe({
+    this.api.getOrganizations().subscribe({
       next: (data) => {
-        this.schools = data || [];
+        this.schools = data || []; // schools property serves as our organizations list
         this.loadingSchools = false;
       },
       error: () => { this.loadingSchools = false; }
     });
   }
 
-  openEditSchool(school: any) {
-    this.editingSchool = school;
-    this.schoolForm = { name: school.Name, slug: school.Slug, settings: school.Settings || '' };
+  openCreateSchool() {
+    this.editingSchool = null;
+    this.schoolForm = {
+      organizationName: '',
+      type: 'school',
+      parentOrgId: null,
+      pointOfContactId: null,
+      adminName: '',
+      adminEmail: '',
+      adminPassword: ''
+    };
+    this.schoolError = '';
+    this.showSchoolModal = true;
+  }
+
+  openEditSchool(org: any) {
+    this.editingSchool = org;
+    this.schoolForm = {
+      organizationName: org.OrganizationName,
+      type: org.Type,
+      parentOrgId: org.ParentOrgID,
+      pointOfContactId: org.PointOfContactID,
+      adminName: '',
+      adminEmail: '',
+      adminPassword: ''
+    };
     this.schoolError = '';
     this.showSchoolModal = true;
   }
 
   saveSchool() {
     this.schoolError = '';
-    this.api.adminUpdateSchool(this.editingSchool.ID, this.schoolForm).subscribe({
-      next: () => {
-        this.showSchoolModal = false;
-        this.schoolSuccess = 'School updated successfully.';
-        this.loadSchools();
-        setTimeout(() => this.schoolSuccess = '', 3000);
-      },
-      error: (e) => this.schoolError = e.error?.error || 'Failed to update school.'
-    });
+    if (this.editingSchool) {
+      const payload = {
+        organizationName: this.schoolForm.organizationName,
+        type: this.schoolForm.type,
+        parentOrgId: this.schoolForm.parentOrgId,
+        pointOfContactId: this.schoolForm.pointOfContactId
+      };
+      this.api.updateOrganization(this.editingSchool.ID, payload).subscribe({
+        next: () => {
+          this.showSchoolModal = false;
+          this.schoolSuccess = 'Organization updated successfully.';
+          this.loadSchools();
+          setTimeout(() => this.schoolSuccess = '', 3000);
+        },
+        error: (e) => this.schoolError = e.error?.error || 'Failed to update organization.'
+      });
+    } else {
+      this.api.createOrganization(this.schoolForm).subscribe({
+        next: () => {
+          this.showSchoolModal = false;
+          this.schoolSuccess = 'Organization created successfully.';
+          this.loadSchools();
+          setTimeout(() => this.schoolSuccess = '', 3000);
+        },
+        error: (e) => this.schoolError = e.error?.error || 'Failed to create organization.'
+      });
+    }
+  }
+
+  deleteOrganization(id: string) {
+    if (confirm('Are you sure you want to delete this organization?')) {
+      this.api.deleteOrganization(id).subscribe({
+        next: () => {
+          this.schoolSuccess = 'Organization deleted successfully.';
+          this.loadSchools();
+          setTimeout(() => this.schoolSuccess = '', 3000);
+        },
+        error: (e) => {
+          alert(e.error?.error || 'Failed to delete organization.');
+        }
+      });
+    }
   }
 
   // ── File Categories ────────────────────────────────────────────────────────

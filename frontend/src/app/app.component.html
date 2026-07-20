@@ -298,7 +298,7 @@
               router.url !== '/admin/schools'
             "
             (click)="navigateToAdminSection('schools')"
-            [title]="isSidebarCollapsed ? 'School Dashboard' : ''"
+            [title]="isSidebarCollapsed ? 'Organizations' : ''"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -314,7 +314,7 @@
             >
               <path d="m4 6 8-4 8 4M18 10v9M6 10v9M12 10v9M2 22h20" />
             </svg>
-            <span *ngIf="!isSidebarCollapsed">School Dashboard</span>
+            <span *ngIf="!isSidebarCollapsed">Organizations</span>
           </button>
 
           <!-- Document Types Config -->
@@ -1008,7 +1008,7 @@
             class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]"
             (click)="navigateToAdminSection('schools'); toggleMobileMenu()"
           >
-            School Dashboard
+            Organizations
           </button>
           <button
             class="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-lg transition-all border-0 cursor-pointer text-left bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background)]"

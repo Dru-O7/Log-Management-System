@@ -15,8 +15,8 @@ type Service interface {
 	CreateUser(req CreateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
 	UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
 	DeleteUser(id uuid.UUID) error
-	GetAllDocumentTypes(schoolID *string) ([]DocumentTypeResponse, error)
-	CreateDocumentType(req CreateDocTypeRequest) (*DocumentTypeResponse, error)
+	GetAllDocumentTypes(actorRole string, actorSchoolID *uuid.UUID) ([]DocumentTypeResponse, error)
+	CreateDocumentType(req CreateDocTypeRequest, actorRole string, actorSchoolID *uuid.UUID) (*DocumentTypeResponse, error)
 	UpdateDocumentType(id uuid.UUID, req UpdateDocTypeRequest) (*DocumentTypeResponse, error)
 	DeleteDocumentType(id uuid.UUID) error
 	GetAllSchools(schoolID *string) ([]SchoolResponse, error)
@@ -25,6 +25,19 @@ type Service interface {
 	CreateRole(req CreateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error)
 	UpdateRole(id uuid.UUID, req UpdateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error)
 	DeleteRole(id uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error
+
+	// Organization CRUD (SuperAdmin and DHE Admins)
+	GetAllOrganizations(actorRole string, actorSchoolID *uuid.UUID) ([]OrganizationResponse, error)
+	CreateOrganization(req CreateOrganizationRequest, actorRole string, actorSchoolID *uuid.UUID) (*OrganizationResponse, error)
+	UpdateOrganization(id uuid.UUID, req UpdateOrganizationRequest, actorRole string, actorSchoolID *uuid.UUID) (*OrganizationResponse, error)
+	DeleteOrganization(id uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error
+
+	// Peer Connections (same-level role sharing)
+	GetPeerConnections(actorRole string, actorSchoolID *uuid.UUID) ([]PeerConnectionResponse, error)
+	RequestPeerConnection(req CreatePeerConnectionRequest, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error)
+	AcceptPeerConnection(connectionID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error)
+	RejectPeerConnection(connectionID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error)
+	RevokePeerConnection(connectionID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error)
 }
 
 type service struct {
@@ -52,16 +65,36 @@ func (s *service) CreateUser(req CreateUserRequest, actorRole string, actorSchoo
 	}
 
 	var targetSchoolID *uuid.UUID
-	if actorRole == "School Admin" {
-		if req.Role == "DHE" || req.Role == "SuperAdmin" || req.Role == "Admin" {
-			return nil, errors.New("school admin cannot assign administrative roles")
-		}
+	if actorRole == "SuperAdmin" {
+		targetSchoolID = req.SchoolID
+	} else {
 		if actorSchoolID == nil {
-			return nil, errors.New("school admin must belong to a school")
+			return nil, errors.New("actor organization context required")
 		}
 		targetSchoolID = actorSchoolID
-	} else {
-		targetSchoolID = req.SchoolID
+
+		// Get actor's role record
+		actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+		if err != nil {
+			return nil, errors.New("actor role not found in hierarchy")
+		}
+
+		if !actorRoleRec.IsAdminAccess {
+			return nil, errors.New("access denied: administrative access required to create users")
+		}
+
+		// Get target role record
+		targetRoleRec, err := s.repo.GetRoleByName(req.Role, targetSchoolID)
+		if err != nil {
+			return nil, errors.New("target role not found in hierarchy")
+		}
+
+		// Validate target role is either same level or direct child
+		isSameRole := targetRoleRec.RoleName == actorRoleRec.RoleName
+		isDirectChild := targetRoleRec.ParentRoleID != nil && *targetRoleRec.ParentRoleID == actorRoleRec.ID
+		if !isSameRole && !isDirectChild {
+			return nil, errors.New("unauthorized role assignment: you can only assign users to your own role or to a direct child role")
+		}
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -134,27 +167,44 @@ func (s *service) UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole stri
 	if req.Email != "" {
 		u.Email = req.Email
 	}
-	if req.Role != "" {
-		if actorRole == "School Admin" {
-			if req.Role == "DHE" || req.Role == "SuperAdmin" || req.Role == "Admin" {
-				return nil, errors.New("school admin cannot assign administrative roles")
+	var targetSchoolID *uuid.UUID
+	if actorRole == "SuperAdmin" {
+		targetSchoolID = req.SchoolID
+		u.SchoolID = targetSchoolID
+	} else {
+		if actorSchoolID == nil {
+			return nil, errors.New("actor organization context required")
+		}
+		targetSchoolID = actorSchoolID
+		u.SchoolID = targetSchoolID
+	}
+
+	if req.Role != "" && req.Role != u.Role {
+		if actorRole != "SuperAdmin" {
+			// Get actor's role record
+			actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+			if err != nil {
+				return nil, errors.New("actor role not found in hierarchy")
+			}
+
+			if !actorRoleRec.IsAdminAccess {
+				return nil, errors.New("access denied: administrative access required to assign roles")
+			}
+
+			// Get target role record
+			targetRoleRec, err := s.repo.GetRoleByName(req.Role, targetSchoolID)
+			if err != nil {
+				return nil, errors.New("target role not found in hierarchy")
+			}
+
+			// Validate target role is either same level or direct child
+			isSameRole := targetRoleRec.RoleName == actorRoleRec.RoleName
+			isDirectChild := targetRoleRec.ParentRoleID != nil && *targetRoleRec.ParentRoleID == actorRoleRec.ID
+			if !isSameRole && !isDirectChild {
+				return nil, errors.New("unauthorized role assignment: you can only assign users to your own role or to a direct child role")
 			}
 		}
 		u.Role = req.Role
-	}
-
-	// Enforce school restrictions for School Admin / DHE
-	if actorRole == "School Admin" {
-		if actorSchoolID == nil {
-			return nil, errors.New("school admin must belong to a school")
-		}
-		if u.SchoolID == nil || *u.SchoolID != *actorSchoolID {
-			return nil, errors.New("you are not authorized to update users outside your school")
-		}
-		u.SchoolID = actorSchoolID
-	} else {
-		// DHE/SuperAdmin can change the school of any user (including changing it to nil/None)
-		u.SchoolID = req.SchoolID
 	}
 	u.ClassSection = req.ClassSection
 	u.Subject = req.Subject
@@ -229,11 +279,83 @@ func (s *service) DeleteUser(id uuid.UUID) error {
 	return s.repo.DeleteUser(id)
 }
 
-func (s *service) GetAllDocumentTypes(schoolID *string) ([]DocumentTypeResponse, error) {
-	return s.repo.GetAllDocumentTypes(schoolID)
+func (s *service) GetAllDocumentTypes(actorRole string, actorSchoolID *uuid.UUID) ([]DocumentTypeResponse, error) {
+	repoImpl, ok := s.repo.(*repository)
+	if !ok {
+		return nil, errors.New("repository conversion failed")
+	}
+
+	var docTypes []models.DocumentType
+	if err := repoImpl.db.Preload("School").Preload("CreatorRole").Order("name asc").Find(&docTypes).Error; err != nil {
+		return nil, err
+	}
+
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil && actorRole != "SuperAdmin" {
+		return nil, errors.New("actor role not found in system hierarchy")
+	}
+
+	// Fetch active peer connections if non-SuperAdmin
+	var peerConnections []models.PeerConnection
+	if actorRole != "SuperAdmin" && actorRoleRec != nil {
+		repoImpl.db.Where("status = ?", "accepted").
+			Where("sender_role_id = ? OR target_role_id = ?", actorRoleRec.ID, actorRoleRec.ID).
+			Find(&peerConnections)
+	}
+
+	isPeerOf := func(creatorRoleID uuid.UUID) bool {
+		for _, conn := range peerConnections {
+			if (conn.SenderRoleID == actorRoleRec.ID && conn.TargetRoleID == creatorRoleID) ||
+				(conn.TargetRoleID == actorRoleRec.ID && conn.SenderRoleID == creatorRoleID) {
+				return true
+			}
+		}
+		return false
+	}
+
+	var resp []DocumentTypeResponse
+	for _, dt := range docTypes {
+		visible := false
+		if actorRole == "SuperAdmin" {
+			visible = true
+		} else {
+			// 1. Legacy/default scoping: no creator role set, but belongs to actor's school
+			if dt.CreatorRoleID == nil {
+				if actorSchoolID != nil && dt.SchoolID == *actorSchoolID {
+					visible = true
+				}
+			} else {
+				// 2. Visible if owned by current role
+				if *dt.CreatorRoleID == actorRoleRec.ID {
+					visible = true
+				} else if dt.CreatorRole != nil && strings.HasPrefix(actorRoleRec.Path, dt.CreatorRole.Path) {
+					// 3. Visible if inherited from ancestors (creator path is prefix of actor path)
+					visible = true
+				} else if isPeerOf(*dt.CreatorRoleID) {
+					// 4. Visible if shared via peer connection
+					visible = true
+				}
+			}
+		}
+
+		if visible {
+			resp = append(resp, DocumentTypeResponse{
+				ID:             dt.ID,
+				SchoolID:       dt.SchoolID,
+				SchoolName:     dt.School.Name,
+				Name:           dt.Name,
+				Slug:           dt.Slug,
+				WorkflowStages: dt.WorkflowStages,
+				RequiredFields: dt.RequiredFields,
+				SlaHours:       0,
+				Active:         dt.Active,
+			})
+		}
+	}
+	return resp, nil
 }
 
-func (s *service) CreateDocumentType(req CreateDocTypeRequest) (*DocumentTypeResponse, error) {
+func (s *service) CreateDocumentType(req CreateDocTypeRequest, actorRole string, actorSchoolID *uuid.UUID) (*DocumentTypeResponse, error) {
 	if strings.TrimSpace(req.Name) == "" {
 		return nil, errors.New("document type name is required")
 	}
@@ -243,6 +365,41 @@ func (s *service) CreateDocumentType(req CreateDocTypeRequest) (*DocumentTypeRes
 	if req.RequiredFields == "" {
 		req.RequiredFields = "[]"
 	}
+
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	var creatorRoleID *uuid.UUID
+	if err == nil && actorRoleRec != nil {
+		creatorRoleID = &actorRoleRec.ID
+
+		// Enforce same-level peer file attribute uniqueness constraint
+		repoImpl, ok := s.repo.(*repository)
+		if ok {
+			var activeConns []models.PeerConnection
+			repoImpl.db.Where("status = ?", "accepted").
+				Where("sender_role_id = ? OR target_role_id = ?", actorRoleRec.ID, actorRoleRec.ID).
+				Find(&activeConns)
+
+			for _, conn := range activeConns {
+				peerRoleID := conn.SenderRoleID
+				if conn.SenderRoleID == actorRoleRec.ID {
+					peerRoleID = conn.TargetRoleID
+				}
+
+				var peerRole models.Role
+				if err := repoImpl.db.First(&peerRole, "id = ?", peerRoleID).Error; err == nil && peerRole.TenantID != nil {
+					var conflictCount int64
+					repoImpl.db.Model(&models.DocumentType{}).
+						Where("school_id = ?", *peerRole.TenantID).
+						Where("name = ? OR slug = ?", req.Name, req.Slug).
+						Count(&conflictCount)
+					if conflictCount > 0 {
+						return nil, errors.New("cannot create file type: conflicting name/slug '" + req.Name + "' exists in peer-connected branch")
+					}
+				}
+			}
+		}
+	}
+
 	dt := &models.DocumentType{
 		ID:             uuid.New(),
 		SchoolID:       req.SchoolID,
@@ -251,6 +408,7 @@ func (s *service) CreateDocumentType(req CreateDocTypeRequest) (*DocumentTypeRes
 		WorkflowStages: req.WorkflowStages,
 		RequiredFields: req.RequiredFields,
 		Active:         true,
+		CreatorRoleID:  creatorRoleID,
 	}
 
 	if err := s.repo.CreateDocumentType(dt); err != nil {
@@ -370,23 +528,49 @@ func (s *service) UpdateSchool(id uuid.UUID, req UpdateSchoolRequest) (*SchoolRe
 }
 
 func (s *service) GetAllRoles(actorRole string, actorSchoolID *uuid.UUID) ([]RoleResponse, error) {
-	var schoolIDStr *string
-	// Global administrative roles can see all roles (no tenant scoping)
-	globalAdminRoles := map[string]bool{
-		"SuperAdmin": true,
-		"Admin":      true,
-		"DHE":        true,
+	allRoles, err := s.repo.GetAllRoles(nil)
+	if err != nil {
+		return nil, err
 	}
-	if !globalAdminRoles[actorRole] {
-		if actorSchoolID != nil {
-			val := actorSchoolID.String()
-			schoolIDStr = &val
-		} else {
-			// Non-global roles must have a school context to list roles
-			return nil, errors.New("school context required to list roles")
+
+	if actorRole == "SuperAdmin" {
+		resp := make([]RoleResponse, len(allRoles))
+		for i, r := range allRoles {
+			parentName := ""
+			if r.ParentRoleID != nil {
+				p, err := s.repo.GetRoleByID(*r.ParentRoleID)
+				if err == nil {
+					parentName = p.RoleName
+				}
+			}
+			resp[i] = RoleResponse{
+				ID:             r.ID,
+				RoleName:       r.RoleName,
+				IsAdminAccess:  r.IsAdminAccess,
+				ParentRoleID:   r.ParentRoleID,
+				ParentRoleName: parentName,
+				TenantID:       r.TenantID,
+				CreatedBy:      r.CreatedBy,
+				Path:           r.Path,
+				CreatedAt:      r.CreatedAt,
+				UpdatedAt:      r.UpdatedAt,
+			}
+		}
+		return resp, nil
+	}
+
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, errors.New("unauthorized: actor role not found in system hierarchy")
+	}
+
+	var filtered []RoleResponse
+	for _, r := range allRoles {
+		if strings.HasPrefix(r.Path, actorRoleRec.Path) {
+			filtered = append(filtered, r)
 		}
 	}
-	return s.repo.GetAllRoles(schoolIDStr)
+	return filtered, nil
 }
 
 func (s *service) CreateRole(req CreateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error) {
@@ -432,34 +616,24 @@ func (s *service) CreateRole(req CreateRoleRequest, actorRole string, actorSchoo
 	var parentRoleID *uuid.UUID
 	var path string
 
-	if req.ParentRoleID != nil {
-		parentRole, err := s.repo.GetRoleByID(*req.ParentRoleID)
-		if err != nil {
-			return nil, errors.New("parent role not found")
-		}
-
-		// Non-SuperAdmins can only parent to roles within their own subtree
-		if actorRole != "SuperAdmin" {
-			isDescendant := strings.HasPrefix(parentRole.Path, actorRoleRec.Path)
-			isSelf := parentRole.ID == actorRoleRec.ID
-			if !isDescendant && !isSelf {
-				return nil, errors.New("cannot parent role outside your own subtree boundary")
+	if actorRole == "SuperAdmin" {
+		if req.ParentRoleID != nil {
+			parentRole, err := s.repo.GetRoleByID(*req.ParentRoleID)
+			if err != nil {
+				return nil, errors.New("parent role not found")
 			}
+			parentRoleID = req.ParentRoleID
+			path = parentRole.Path + newID.String() + "/"
+		} else {
+			path = "/" + newID.String() + "/"
 		}
-
-		// Enforce tenant scoping
-		if parentRole.TenantID != nil && (targetTenantID == nil || *parentRole.TenantID != *targetTenantID) {
-			return nil, errors.New("cannot parent role to another tenant's role")
-		}
-
-		parentRoleID = req.ParentRoleID
-		path = parentRole.Path + newID.String() + "/"
 	} else {
-		// Only SuperAdmins can create top-level/root roles
-		if actorRole != "SuperAdmin" {
-			return nil, errors.New("parent role is required for non-SuperAdmins")
+		// Non-SuperAdmins: automatically parent to their own role
+		if !actorRoleRec.IsAdminAccess {
+			return nil, errors.New("cannot create role: administrative access (isAdminAccess = true) is required to create child roles")
 		}
-		path = "/" + newID.String() + "/"
+		parentRoleID = &actorRoleRec.ID
+		path = actorRoleRec.Path + newID.String() + "/"
 	}
 
 	// Max tree depth check (10 levels)
@@ -528,12 +702,13 @@ func (s *service) UpdateRole(id uuid.UUID, req UpdateRoleRequest, actorRole stri
 		return nil, errors.New("unauthorized: actor role not found in system hierarchy")
 	}
 
-	// Subtree boundary validation: must be a strict descendant of actor's role
+	// Subtree boundary validation: must be a direct child of actor's role
 	if actorRole != "SuperAdmin" {
-		isDescendant := strings.HasPrefix(role.Path, actorRoleRec.Path)
-		isSelf := role.ID == actorRoleRec.ID
-		if !isDescendant || isSelf {
-			return nil, errors.New("access denied: you can only update roles within your own subtree")
+		if role.ParentRoleID == nil || *role.ParentRoleID != actorRoleRec.ID {
+			return nil, errors.New("access denied: you can only update roles that are direct children of your own role")
+		}
+		if !actorRoleRec.IsAdminAccess {
+			return nil, errors.New("access denied: administrative access (isAdminAccess = true) is required to manage roles")
 		}
 	}
 
@@ -575,12 +750,10 @@ func (s *service) UpdateRole(id uuid.UUID, req UpdateRoleRequest, actorRole stri
 				return nil, errors.New("proposed parent role not found")
 			}
 
-			// Verify actor has access to new parent role
+			// Verify actor has access to new parent role (must be the actor's role itself to remain a direct child)
 			if actorRole != "SuperAdmin" {
-				isParentDescendant := strings.HasPrefix(newParentRole.Path, actorRoleRec.Path)
-				isParentSelf := newParentRole.ID == actorRoleRec.ID
-				if !isParentDescendant && !isParentSelf {
-					return nil, errors.New("cannot reparent role to a target outside your subtree")
+				if newParentRole.ID != actorRoleRec.ID {
+					return nil, errors.New("cannot reparent role: you can only parent roles to your own role")
 				}
 			}
 
@@ -688,12 +861,13 @@ func (s *service) DeleteRole(id uuid.UUID, actorRole string, actorSchoolID *uuid
 		return errors.New("unauthorized: actor role not found in system hierarchy")
 	}
 
-	// Subtree boundary validation: must be a strict descendant of actor's role
+	// Subtree boundary validation: must be a direct child of actor's role
 	if actorRole != "SuperAdmin" {
-		isDescendant := strings.HasPrefix(role.Path, actorRoleRec.Path)
-		isSelf := role.ID == actorRoleRec.ID
-		if !isDescendant || isSelf {
-			return errors.New("access denied: you can only delete roles within your own subtree")
+		if role.ParentRoleID == nil || *role.ParentRoleID != actorRoleRec.ID {
+			return errors.New("access denied: you can only delete roles that are direct children of your own role")
+		}
+		if !actorRoleRec.IsAdminAccess {
+			return errors.New("access denied: administrative access (isAdminAccess = true) is required to manage roles")
 		}
 	}
 
@@ -716,4 +890,513 @@ func (s *service) DeleteRole(id uuid.UUID, actorRole string, actorSchoolID *uuid
 	}
 
 	return s.repo.DeleteRole(id)
+}
+
+// ── Organization CRUD (SuperAdmin only) ──────────────────────────────────────
+
+func (s *service) GetAllOrganizations(actorRole string, actorSchoolID *uuid.UUID) ([]OrganizationResponse, error) {
+	orgs, err := s.repo.GetAllOrganizations()
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered []models.Organization
+	if actorRole == "SuperAdmin" {
+		filtered = orgs
+	} else {
+		if actorSchoolID == nil {
+			return nil, errors.New("actor organization context required")
+		}
+		var actorOrg models.Organization
+		repoImpl, ok := s.repo.(*repository)
+		if ok {
+			repoImpl.db.Where("tenant_id = ?", *actorSchoolID).First(&actorOrg)
+		}
+
+		for _, org := range orgs {
+			if org.ID == actorOrg.ID || (org.ParentOrgID != nil && *org.ParentOrgID == actorOrg.ID) {
+				filtered = append(filtered, org)
+			}
+		}
+	}
+
+	resp := make([]OrganizationResponse, len(filtered))
+	for i, org := range filtered {
+		parentName := ""
+		if org.ParentOrg != nil {
+			parentName = org.ParentOrg.OrganizationName
+		}
+		pocName := ""
+		if org.PointOfContact != nil {
+			pocName = org.PointOfContact.Name
+		}
+		resp[i] = OrganizationResponse{
+			ID:               org.ID,
+			OrganizationName: org.OrganizationName,
+			Type:             org.Type,
+			ParentOrgID:      org.ParentOrgID,
+			ParentOrgName:    parentName,
+			PointOfContactID: org.PointOfContactID,
+			PointOfContact:   pocName,
+			CreatedBy:        org.CreatedBy,
+			TenantID:         org.TenantID,
+			CreatedAt:        org.CreatedAt,
+			UpdatedAt:        org.UpdatedAt,
+		}
+	}
+	return resp, nil
+}
+
+func (s *service) CreateOrganization(req CreateOrganizationRequest, actorRole string, actorSchoolID *uuid.UUID) (*OrganizationResponse, error) {
+	if actorRole != "SuperAdmin" && actorRole != "DHE" && actorRole != "Admin" {
+		return nil, errors.New("access denied: only SuperAdmin and DHE Admins can create organizations")
+	}
+	if strings.TrimSpace(req.OrganizationName) == "" {
+		return nil, errors.New("organization name is required")
+	}
+
+	repoImpl, ok := s.repo.(*repository)
+	if !ok {
+		return nil, errors.New("repository conversion failed")
+	}
+
+	var parentOrgID *uuid.UUID
+	var creatorRoleRec *models.Role
+
+	if actorRole != "SuperAdmin" {
+		if actorSchoolID == nil {
+			return nil, errors.New("actor organization context required")
+		}
+		var actorOrg models.Organization
+		if err := repoImpl.db.Where("tenant_id = ?", *actorSchoolID).First(&actorOrg).Error; err != nil {
+			return nil, errors.New("actor organization not found")
+		}
+		parentOrgID = &actorOrg.ID
+
+		roleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+		if err != nil {
+			return nil, errors.New("actor role record not found")
+		}
+		creatorRoleRec = roleRec
+	} else {
+		parentOrgID = req.ParentOrgID
+		roleRec, err := s.repo.GetRoleByName("SuperAdmin", nil)
+		if err == nil {
+			creatorRoleRec = roleRec
+		}
+	}
+
+	var tenantID *uuid.UUID
+	var pocID *uuid.UUID
+
+	if req.AdminEmail != "" && req.AdminName != "" {
+		slug := strings.ToLower(strings.ReplaceAll(req.OrganizationName, " ", "-"))
+		newSchool := &models.School{
+			ID:   uuid.New(),
+			Name: req.OrganizationName,
+			Slug: slug,
+		}
+		if err := repoImpl.db.Create(newSchool).Error; err != nil {
+			return nil, errors.New("failed to create tenant school: " + err.Error())
+		}
+		tenantID = &newSchool.ID
+
+		childRoleName := "School Admin"
+		if actorRole == "SuperAdmin" {
+			childRoleName = "DHE"
+		}
+
+		var parentRoleID *uuid.UUID
+		var parentPath string
+		if creatorRoleRec != nil {
+			parentRoleID = &creatorRoleRec.ID
+			parentPath = creatorRoleRec.Path
+		}
+
+		newRoleID := uuid.New()
+		var path string
+		if parentRoleID == nil {
+			path = "/" + newRoleID.String() + "/"
+		} else {
+			path = parentPath + newRoleID.String() + "/"
+		}
+		newRole := &models.Role{
+			ID:            newRoleID,
+			RoleName:      childRoleName,
+			IsAdminAccess: true,
+			ParentRoleID:  parentRoleID,
+			TenantID:      tenantID,
+			CreatedBy:     actorRole,
+			Path:          path,
+		}
+		if err := s.repo.CreateRole(newRole); err != nil {
+			return nil, errors.New("failed to create organization admin role: " + err.Error())
+		}
+
+		password := req.AdminPassword
+		if password == "" {
+			password = "password"
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+
+		newUser := &models.User{
+			ID:           uuid.New(),
+			Name:         req.AdminName,
+			Email:        req.AdminEmail,
+			PasswordHash: string(hash),
+			Role:         childRoleName,
+			SchoolID:     tenantID,
+		}
+		if err := s.repo.CreateUser(newUser); err != nil {
+			return nil, errors.New("failed to create point of contact admin user: " + err.Error())
+		}
+		pocID = &newUser.ID
+	} else if req.PointOfContactID != nil {
+		pocID = req.PointOfContactID
+		tenantID = req.TenantID
+	}
+
+	org := &models.Organization{
+		ID:               uuid.New(),
+		OrganizationName: req.OrganizationName,
+		Type:             req.Type,
+		ParentOrgID:      parentOrgID,
+		PointOfContactID: pocID,
+		CreatedBy:        actorRole,
+		TenantID:         tenantID,
+	}
+
+	if err := repoImpl.db.Create(org).Error; err != nil {
+		return nil, err
+	}
+
+	return s.GetOrganizationByID(org.ID)
+}
+
+func (s *service) GetOrganizationByID(id uuid.UUID) (*OrganizationResponse, error) {
+	org, err := s.repo.GetOrganizationByID(id)
+	if err != nil {
+		return nil, err
+	}
+	parentName := ""
+	if org.ParentOrg != nil {
+		parentName = org.ParentOrg.OrganizationName
+	}
+	pocName := ""
+	if org.PointOfContact != nil {
+		pocName = org.PointOfContact.Name
+	}
+	return &OrganizationResponse{
+		ID:               org.ID,
+		OrganizationName: org.OrganizationName,
+		Type:             org.Type,
+		ParentOrgID:      org.ParentOrgID,
+		ParentOrgName:    parentName,
+		PointOfContactID: org.PointOfContactID,
+		PointOfContact:   pocName,
+		CreatedBy:        org.CreatedBy,
+		TenantID:         org.TenantID,
+		CreatedAt:        org.CreatedAt,
+		UpdatedAt:        org.UpdatedAt,
+	}, nil
+}
+
+func (s *service) UpdateOrganization(id uuid.UUID, req UpdateOrganizationRequest, actorRole string, actorSchoolID *uuid.UUID) (*OrganizationResponse, error) {
+	if actorRole != "SuperAdmin" && actorRole != "DHE" && actorRole != "Admin" {
+		return nil, errors.New("access denied: only SuperAdmin and DHE Admins can manage organizations")
+	}
+	org, err := s.repo.GetOrganizationByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	repoImpl, ok := s.repo.(*repository)
+	if !ok {
+		return nil, errors.New("repository conversion failed")
+	}
+
+	if actorRole != "SuperAdmin" {
+		if actorSchoolID == nil {
+			return nil, errors.New("actor organization context required")
+		}
+		var actorOrg models.Organization
+		if err := repoImpl.db.Where("tenant_id = ?", *actorSchoolID).First(&actorOrg).Error; err != nil {
+			return nil, errors.New("actor organization not found")
+		}
+
+		if org.ID != actorOrg.ID && (org.ParentOrgID == nil || *org.ParentOrgID != actorOrg.ID) {
+			return nil, errors.New("access denied: you can only update child organizations under your scope")
+		}
+	}
+
+	if req.OrganizationName != "" {
+		org.OrganizationName = req.OrganizationName
+	}
+	if req.Type != "" {
+		org.Type = req.Type
+	}
+	if actorRole == "SuperAdmin" {
+		org.ParentOrgID = req.ParentOrgID
+	}
+	org.PointOfContactID = req.PointOfContactID
+
+	if err := repoImpl.db.Save(org).Error; err != nil {
+		return nil, err
+	}
+
+	return s.GetOrganizationByID(org.ID)
+}
+
+func (s *service) DeleteOrganization(id uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error {
+	if actorRole != "SuperAdmin" && actorRole != "DHE" && actorRole != "Admin" {
+		return errors.New("access denied: only SuperAdmin and DHE Admins can delete organizations")
+	}
+	org, err := s.repo.GetOrganizationByID(id)
+	if err != nil {
+		return err
+	}
+
+	if actorRole != "SuperAdmin" {
+		if actorSchoolID == nil {
+			return errors.New("actor organization context required")
+		}
+		repoImpl, ok := s.repo.(*repository)
+		if !ok {
+			return errors.New("repository conversion failed")
+		}
+		var actorOrg models.Organization
+		if err := repoImpl.db.Where("tenant_id = ?", *actorSchoolID).First(&actorOrg).Error; err != nil {
+			return errors.New("actor organization not found")
+		}
+
+		if org.ID != actorOrg.ID && (org.ParentOrgID == nil || *org.ParentOrgID != actorOrg.ID) {
+			return errors.New("access denied: you can only delete child organizations under your scope")
+		}
+	}
+
+	return s.repo.DeleteOrganization(id)
+}
+
+// ── Peer Connections (same-level role sharing) ───────────────────────────────
+
+func (s *service) GetPeerConnections(actorRole string, actorSchoolID *uuid.UUID) ([]PeerConnectionResponse, error) {
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, err
+	}
+
+	connections, err := s.repo.GetPeerConnectionsByRole(actorRoleRec.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]PeerConnectionResponse, len(connections))
+	for i, conn := range connections {
+		resp[i] = PeerConnectionResponse{
+			ID:             conn.ID,
+			SenderRoleID:   conn.SenderRoleID,
+			SenderRoleName: conn.SenderRole.RoleName,
+			TargetRoleID:   conn.TargetRoleID,
+			TargetRoleName: conn.TargetRole.RoleName,
+			Status:         conn.Status,
+			CreatedAt:      conn.CreatedAt,
+			UpdatedAt:      conn.UpdatedAt,
+		}
+	}
+	return resp, nil
+}
+
+func (s *service) RequestPeerConnection(req CreatePeerConnectionRequest, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error) {
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, err
+	}
+
+	targetRole, err := s.repo.GetRoleByID(req.TargetRoleID)
+	if err != nil {
+		return nil, errors.New("target role not found")
+	}
+
+	// 1. Verify same hierarchy depth
+	senderDepth := strings.Count(actorRoleRec.Path, "/")
+	targetDepth := strings.Count(targetRole.Path, "/")
+	if senderDepth != targetDepth {
+		return nil, errors.New("peer connections can only be established between same-level roles in the hierarchy")
+	}
+
+	// 2. Same-level file attribute uniqueness constraint (overlap check)
+	repoImpl, ok := s.repo.(*repository)
+	if ok {
+		var senderDocTypes, targetDocTypes []models.DocumentType
+		if actorRoleRec.TenantID != nil {
+			repoImpl.db.Where("school_id = ?", *actorRoleRec.TenantID).Find(&senderDocTypes)
+		}
+		if targetRole.TenantID != nil {
+			repoImpl.db.Where("school_id = ?", *targetRole.TenantID).Find(&targetDocTypes)
+		}
+
+		for _, sDT := range senderDocTypes {
+			for _, tDT := range targetDocTypes {
+				if strings.EqualFold(sDT.Name, tDT.Name) || strings.EqualFold(sDT.Slug, tDT.Slug) {
+					return nil, errors.New("peer connection rejected: identical or overlapping file type '" + sDT.Name + "' exists between branches")
+				}
+			}
+		}
+	}
+
+	// 3. Create connection
+	conn := &models.PeerConnection{
+		ID:           uuid.New(),
+		SenderRoleID: actorRoleRec.ID,
+		TargetRoleID: targetRole.ID,
+		Status:       "pending",
+	}
+
+	if ok {
+		if err := repoImpl.db.Create(conn).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	return &PeerConnectionResponse{
+		ID:             conn.ID,
+		SenderRoleID:   conn.SenderRoleID,
+		SenderRoleName: actorRoleRec.RoleName,
+		TargetRoleID:   conn.TargetRoleID,
+		TargetRoleName: targetRole.RoleName,
+		Status:         conn.Status,
+		CreatedAt:      conn.CreatedAt,
+		UpdatedAt:      conn.UpdatedAt,
+	}, nil
+}
+
+func (s *service) AcceptPeerConnection(connectionID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error) {
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, err
+	}
+
+	repoImpl, ok := s.repo.(*repository)
+	if !ok {
+		return nil, errors.New("repository conversion failed")
+	}
+
+	var conn models.PeerConnection
+	if err := repoImpl.db.Preload("SenderRole").Preload("TargetRole").First(&conn, "id = ?", connectionID).Error; err != nil {
+		return nil, errors.New("peer connection not found")
+	}
+
+	if conn.TargetRoleID != actorRoleRec.ID {
+		return nil, errors.New("access denied: only the recipient role can accept this peer connection request")
+	}
+
+	// Re-verify same-level file type conflicts on acceptance
+	var senderDocTypes, targetDocTypes []models.DocumentType
+	if conn.SenderRole.TenantID != nil {
+		repoImpl.db.Where("school_id = ?", *conn.SenderRole.TenantID).Find(&senderDocTypes)
+	}
+	if conn.TargetRole.TenantID != nil {
+		repoImpl.db.Where("school_id = ?", *conn.TargetRole.TenantID).Find(&targetDocTypes)
+	}
+
+	for _, sDT := range senderDocTypes {
+		for _, tDT := range targetDocTypes {
+			if strings.EqualFold(sDT.Name, tDT.Name) || strings.EqualFold(sDT.Slug, tDT.Slug) {
+				return nil, errors.New("peer connection rejected: identical or overlapping file type '" + sDT.Name + "' exists between branches")
+			}
+		}
+	}
+
+	conn.Status = "accepted"
+	if err := repoImpl.db.Save(&conn).Error; err != nil {
+		return nil, err
+	}
+
+	return &PeerConnectionResponse{
+		ID:             conn.ID,
+		SenderRoleID:   conn.SenderRoleID,
+		SenderRoleName: conn.SenderRole.RoleName,
+		TargetRoleID:   conn.TargetRoleID,
+		TargetRoleName: conn.TargetRole.RoleName,
+		Status:         conn.Status,
+		CreatedAt:      conn.CreatedAt,
+		UpdatedAt:      conn.UpdatedAt,
+	}, nil
+}
+
+func (s *service) RejectPeerConnection(connectionID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error) {
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, err
+	}
+
+	repoImpl, ok := s.repo.(*repository)
+	if !ok {
+		return nil, errors.New("repository conversion failed")
+	}
+
+	var conn models.PeerConnection
+	if err := repoImpl.db.Preload("SenderRole").Preload("TargetRole").First(&conn, "id = ?", connectionID).Error; err != nil {
+		return nil, errors.New("peer connection not found")
+	}
+
+	if conn.TargetRoleID != actorRoleRec.ID {
+		return nil, errors.New("access denied: only the recipient role can reject this peer connection request")
+	}
+
+	conn.Status = "rejected"
+	if err := repoImpl.db.Save(&conn).Error; err != nil {
+		return nil, err
+	}
+
+	return &PeerConnectionResponse{
+		ID:             conn.ID,
+		SenderRoleID:   conn.SenderRoleID,
+		SenderRoleName: conn.SenderRole.RoleName,
+		TargetRoleID:   conn.TargetRoleID,
+		TargetRoleName: conn.TargetRole.RoleName,
+		Status:         conn.Status,
+		CreatedAt:      conn.CreatedAt,
+		UpdatedAt:      conn.UpdatedAt,
+	}, nil
+}
+
+func (s *service) RevokePeerConnection(connectionID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) (*PeerConnectionResponse, error) {
+	actorRoleRec, err := s.repo.GetRoleByName(actorRole, actorSchoolID)
+	if err != nil {
+		return nil, err
+	}
+
+	repoImpl, ok := s.repo.(*repository)
+	if !ok {
+		return nil, errors.New("repository conversion failed")
+	}
+
+	var conn models.PeerConnection
+	if err := repoImpl.db.Preload("SenderRole").Preload("TargetRole").First(&conn, "id = ?", connectionID).Error; err != nil {
+		return nil, errors.New("peer connection not found")
+	}
+
+	if conn.SenderRoleID != actorRoleRec.ID && conn.TargetRoleID != actorRoleRec.ID {
+		return nil, errors.New("access denied: only connected peer roles can revoke this peer connection")
+	}
+
+	conn.Status = "revoked"
+	if err := repoImpl.db.Save(&conn).Error; err != nil {
+		return nil, err
+	}
+
+	return &PeerConnectionResponse{
+		ID:             conn.ID,
+		SenderRoleID:   conn.SenderRoleID,
+		SenderRoleName: conn.SenderRole.RoleName,
+		TargetRoleID:   conn.TargetRoleID,
+		TargetRoleName: conn.TargetRole.RoleName,
+		Status:         conn.Status,
+		CreatedAt:      conn.CreatedAt,
+		UpdatedAt:      conn.UpdatedAt,
+	}, nil
 }

@@ -238,4 +238,22 @@ export class ApiService {
   deleteRole(id: string) {
     return this.http.delete<any>(`${this.apiUrl}/admin/roles/${id}`);
   }
+
+  // ── Organizations ──────────────────────────────────────────────────────────
+
+  getOrganizations() {
+    return this.http.get<any[]>(`${this.apiUrl}/admin/organizations`);
+  }
+
+  createOrganization(data: any) {
+    return this.http.post<any>(`${this.apiUrl}/admin/organizations`, data);
+  }
+
+  updateOrganization(id: string, data: any) {
+    return this.http.put<any>(`${this.apiUrl}/admin/organizations/${id}`, data);
+  }
+
+  deleteOrganization(id: string) {
+    return this.http.delete<any>(`${this.apiUrl}/admin/organizations/${id}`);
+  }
 }

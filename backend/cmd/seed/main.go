@@ -18,7 +18,7 @@ func main() {
 	log.Println("Resetting and seeding database accounts...")
 
 	// Clear role and school data only — preserve users and documents
-	tables := []string{"roles"}
+	tables := []string{"roles", "organizations", "peer_connections"}
 	for _, t := range tables {
 		tx := gormDB.Exec("TRUNCATE TABLE " + t + " CASCADE;")
 		if tx.Error != nil {
@@ -26,28 +26,29 @@ func main() {
 		}
 	}
 
-	// 1. Seed Schools (idempotent)
+	// 1. Seed Schools/Tenants (idempotent)
 	schoolDefs := []struct {
 		Name string
 		Slug string
 	}{
+		{"Directorate of Higher Education (DHE)", "dhe-hq"},
 		{"Greenwood High School", "greenwood-high"},
 		{"Delhi Public School", "dps"},
 		{"Modern School", "modern-school"},
 	}
-	var school1, school2, school3 models.School
-	schoolRefs := []*models.School{&school1, &school2, &school3}
+	var dheSchool, school1, school2, school3 models.School
+	schoolRefs := []*models.School{&dheSchool, &school1, &school2, &school3}
 	for i, def := range schoolDefs {
 		if err := gormDB.Where("slug = ?", def.Slug).First(schoolRefs[i]).Error; err != nil {
 			schoolRefs[i].ID = uuid.New()
 			schoolRefs[i].Name = def.Name
 			schoolRefs[i].Slug = def.Slug
 			if err := gormDB.Create(schoolRefs[i]).Error; err != nil {
-				log.Fatalf("Failed to create school %s: %v", def.Name, err)
+				log.Fatalf("Failed to create tenant school %s: %v", def.Name, err)
 			}
 		}
 	}
-	log.Println("Seeded schools: Greenwood High, DPS, Modern School")
+	log.Println("Seeded schools: DHE, Greenwood High, DPS, Modern School")
 
 	// 2. Hash default password
 	hash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
@@ -105,7 +106,7 @@ func main() {
 	// 3. Seed default users (idempotent — skip if email already exists)
 	defaultUsers := []models.User{
 		{Name: "Super Admin", Email: "superadmin@school.edu", PasswordHash: string(hash), Role: "SuperAdmin", SchoolID: nil},
-		{Name: "System Administrator", Email: "admin@school.edu", PasswordHash: string(hash), Role: "DHE", SchoolID: nil},
+		{Name: "System Administrator", Email: "admin@school.edu", PasswordHash: string(hash), Role: "DHE", SchoolID: &dheSchool.ID},
 
 		// Greenwood High School
 		{Name: "Rahul Gupta", Email: "rahul@school.edu", PasswordHash: string(hash), Role: "School Admin", SchoolID: &school1.ID},
@@ -129,12 +130,62 @@ func main() {
 	for i := range defaultUsers {
 		var existing models.User
 		if err := gormDB.Where("email = ?", defaultUsers[i].Email).First(&existing).Error; err != nil {
-			// Only create if not already present
 			defaultUsers[i].ID = uuid.New()
 			gormDB.Create(&defaultUsers[i])
+		} else {
+			existing.SchoolID = defaultUsers[i].SchoolID
+			gormDB.Save(&existing)
+			defaultUsers[i] = existing
 		}
 	}
 	log.Println("Seeded users across multiple schools (existing users preserved).")
+
+	// 3a. Seed organizations matching the schools
+	orgDefs := []struct {
+		SchoolID         uuid.UUID
+		OrganizationName string
+		Type             string
+		AdminEmail       string
+		IsDHE            bool
+	}{
+		{dheSchool.ID, "Directorate of Higher Education (DHE)", "dhe", "admin@school.edu", true},
+		{school1.ID, "Greenwood High School", "school", "rahul@school.edu", false},
+		{school2.ID, "Delhi Public School", "school", "gaurav@school.edu", false},
+		{school3.ID, "Modern School", "school", "shalini@school.edu", false},
+	}
+
+	var dheOrgID *uuid.UUID
+	for _, def := range orgDefs {
+		var existingOrg models.Organization
+		if err := gormDB.Where("tenant_id = ?", def.SchoolID).First(&existingOrg).Error; err != nil {
+			var adminUser models.User
+			var pocID *uuid.UUID
+			if err := gormDB.Where("email = ?", def.AdminEmail).First(&adminUser).Error; err == nil {
+				pocID = &adminUser.ID
+			}
+
+			newOrg := models.Organization{
+				ID:               uuid.New(),
+				OrganizationName: def.OrganizationName,
+				Type:             def.Type,
+				PointOfContactID: pocID,
+				CreatedBy:        "SuperAdmin",
+				TenantID:         &def.SchoolID,
+			}
+			if !def.IsDHE && dheOrgID != nil {
+				newOrg.ParentOrgID = dheOrgID
+			}
+			gormDB.Create(&newOrg)
+			if def.IsDHE {
+				dheOrgID = &newOrg.ID
+			}
+		} else {
+			if def.IsDHE {
+				dheOrgID = &existingOrg.ID
+			}
+		}
+	}
+	log.Println("Seeded matching organizations.")
 
 	// 4. Ensure document types are seeded for all schools
 	var schools []models.School

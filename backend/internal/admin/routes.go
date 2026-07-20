@@ -144,5 +144,20 @@ func RegisterRoutes(g *echo.Group, handler *Handler, jwtSecret []byte, db *gorm.
 	roles.POST("", handler.CreateRole)
 	roles.PUT("/:id", handler.UpdateRole)
 	roles.DELETE("/:id", handler.DeleteRole)
+
+	// Organization management (SuperAdmin and DHE Admins, scoped in service layer)
+	orgs := admin.Group("/organizations")
+	orgs.GET("", handler.GetOrganizations)
+	orgs.POST("", handler.CreateOrganization)
+	orgs.PUT("/:id", handler.UpdateOrganization)
+	orgs.DELETE("/:id", handler.DeleteOrganization)
+
+	// Peer connections (same-level role sharing)
+	peers := admin.Group("/peer-connections")
+	peers.GET("", handler.GetPeerConnections)
+	peers.POST("", handler.RequestPeerConnection)
+	peers.PUT("/:id/accept", handler.AcceptPeerConnection)
+	peers.PUT("/:id/reject", handler.RejectPeerConnection)
+	peers.PUT("/:id/revoke", handler.RevokePeerConnection)
 }
 

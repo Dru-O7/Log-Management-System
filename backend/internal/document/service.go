@@ -164,10 +164,39 @@ func (s *service) Upload(uploaderID uuid.UUID, targetOwnerIDs []uuid.UUID, title
 	}
 
 	var docTypeID *uuid.UUID
-	var dt *models.DocumentType
+	var dt models.DocumentType
 	if schoolID != nil {
-		dt, err = s.repo.GetDocumentTypeBySlug(*schoolID, slug)
+		err = s.repo.(*repository).db.Preload("CreatorRole").Where("school_id = ? AND slug = ?", *schoolID, slug).First(&dt).Error
 		if err == nil {
+			if dt.CreatorRoleID != nil {
+				var uRole models.Role
+				if err := s.repo.(*repository).db.Where("role_name = ? AND (tenant_id IS NULL OR tenant_id = ?)", uploaderUser.Role, uploaderUser.SchoolID).First(&uRole).Error; err != nil {
+					return nil, errors.New("uploader role not found in system hierarchy")
+				}
+
+				if uploaderUser.Role != "SuperAdmin" {
+					hasAccess := false
+					if *dt.CreatorRoleID == uRole.ID {
+						hasAccess = true
+					} else if dt.CreatorRole != nil && strings.HasPrefix(uRole.Path, dt.CreatorRole.Path) {
+						hasAccess = true
+					} else {
+						var connCount int64
+						s.repo.(*repository).db.Model(&models.PeerConnection{}).
+							Where("status = ?", "accepted").
+							Where("(sender_role_id = ? AND target_role_id = ?) OR (sender_role_id = ? AND target_role_id = ?)",
+								uRole.ID, *dt.CreatorRoleID, *dt.CreatorRoleID, uRole.ID).
+							Count(&connCount)
+						if connCount > 0 {
+							hasAccess = true
+						}
+					}
+
+					if !hasAccess {
+						return nil, errors.New("unauthorized to upload files of this type: boundary restriction or no active peer connection")
+					}
+				}
+			}
 			docTypeID = &dt.ID
 		}
 	}

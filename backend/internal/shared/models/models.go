@@ -55,10 +55,12 @@ type DocumentType struct {
 	WorkflowStages    string     `gorm:"type:text;not null"` // JSON array of stages
 	RequiredFields    string     `gorm:"type:text"`          // JSON array of dynamic fields
 	Active            bool       `gorm:"default:true"`
+	CreatorRoleID     *uuid.UUID `gorm:"type:uuid"`
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 
-	School School `gorm:"foreignKey:SchoolID"`
+	School      School `gorm:"foreignKey:SchoolID"`
+	CreatorRole *Role  `gorm:"foreignKey:CreatorRoleID"`
 }
 
 type Document struct {
@@ -306,6 +308,47 @@ type Role struct {
 }
 
 func (base *Role) BeforeCreate(tx *gorm.DB) (err error) {
+	if base.ID == uuid.Nil {
+		base.ID = uuid.New()
+	}
+	return
+}
+
+type Organization struct {
+	ID               uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	OrganizationName string     `gorm:"size:255;not null"`
+	Type             string     `gorm:"size:100;not null"` // e.g. "school"
+	ParentOrgID      *uuid.UUID `gorm:"type:uuid"`
+	PointOfContactID *uuid.UUID `gorm:"type:uuid"` // Links to User (Admin)
+	CreatedBy        string     `gorm:"size:255;not null"` // SuperAdmin
+	TenantID         *uuid.UUID `gorm:"type:uuid"` // tenantId if applicable
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+
+	ParentOrg      *Organization `gorm:"foreignKey:ParentOrgID"`
+	PointOfContact *User         `gorm:"foreignKey:PointOfContactID"`
+}
+
+func (base *Organization) BeforeCreate(tx *gorm.DB) (err error) {
+	if base.ID == uuid.Nil {
+		base.ID = uuid.New()
+	}
+	return
+}
+
+type PeerConnection struct {
+	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	SenderRoleID uuid.UUID `gorm:"type:uuid;not null;index"`
+	TargetRoleID uuid.UUID `gorm:"type:uuid;not null;index"`
+	Status       string    `gorm:"size:50;not null;default:'pending'"` // pending, accepted, rejected, revoked
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+
+	SenderRole *Role `gorm:"foreignKey:SenderRoleID"`
+	TargetRole *Role `gorm:"foreignKey:TargetRoleID"`
+}
+
+func (base *PeerConnection) BeforeCreate(tx *gorm.DB) (err error) {
 	if base.ID == uuid.Nil {
 		base.ID = uuid.New()
 	}

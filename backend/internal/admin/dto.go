@@ -132,3 +132,55 @@ type UpdateRoleRequest struct {
 	ParentRoleID  *uuid.UUID `json:"parentRole"`
 	TenantID      *uuid.UUID `json:"tenantId"`
 }
+
+// ── Organization Management ──────────────────────────────────────────────────
+
+type OrganizationResponse struct {
+	ID               uuid.UUID  `json:"ID"`
+	OrganizationName string     `json:"OrganizationName"`
+	Type             string     `json:"Type"`
+	ParentOrgID      *uuid.UUID `json:"ParentOrgID"`
+	ParentOrgName    string     `json:"ParentOrgName"`
+	PointOfContactID *uuid.UUID `json:"PointOfContactID"`
+	PointOfContact   string     `json:"PointOfContactName"`
+	CreatedBy        string     `json:"CreatedBy"`
+	TenantID         *uuid.UUID `json:"TenantID"`
+	CreatedAt        time.Time  `json:"CreatedAt"`
+	UpdatedAt        time.Time  `json:"UpdatedAt"`
+}
+
+type CreateOrganizationRequest struct {
+	OrganizationName string     `json:"organizationName"`
+	Type             string     `json:"type"`
+	ParentOrgID      *uuid.UUID `json:"parentOrgId"`
+	PointOfContactID *uuid.UUID `json:"pointOfContactId"`
+	AdminName        string     `json:"adminName"`
+	AdminEmail       string     `json:"adminEmail"`
+	AdminPassword    string     `json:"adminPassword"`
+	TenantID         *uuid.UUID `json:"tenantId"`
+}
+
+type UpdateOrganizationRequest struct {
+	OrganizationName string     `json:"organizationName"`
+	Type             string     `json:"type"`
+	ParentOrgID      *uuid.UUID `json:"parentOrgId"`
+	PointOfContactID *uuid.UUID `json:"pointOfContactId"`
+	TenantID         *uuid.UUID `json:"tenantId"`
+}
+
+// ── Peer Connection Management ────────────────────────────────────────────────
+
+type PeerConnectionResponse struct {
+	ID             uuid.UUID `json:"ID"`
+	SenderRoleID   uuid.UUID `json:"SenderRoleID"`
+	SenderRoleName string    `json:"SenderRoleName"`
+	TargetRoleID   uuid.UUID `json:"TargetRoleID"`
+	TargetRoleName string    `json:"TargetRoleName"`
+	Status         string    `json:"Status"`
+	CreatedAt      time.Time `json:"CreatedAt"`
+	UpdatedAt      time.Time `json:"UpdatedAt"`
+}
+
+type CreatePeerConnectionRequest struct {
+	TargetRoleID uuid.UUID `json:"targetRoleId"`
+}
