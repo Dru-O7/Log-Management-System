@@ -29,14 +29,18 @@ func (h *Handler) GetStats(c echo.Context) error {
 	return c.JSON(http.StatusOK, stats)
 }
 
-// GetUsers returns all users across all schools
+// GetUsers returns all users across all schools scoped by hierarchy
 func (h *Handler) GetUsers(c echo.Context) error {
-	schoolIDStr, _ := c.Get("actor_school_id").(string)
-	var schoolID *string
-	if schoolIDStr != "" {
-		schoolID = &schoolIDStr
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
 	}
-	users, err := h.service.GetAllUsers(schoolID)
+
+	users, err := h.service.GetAllUsers(actorRole, actorSchoolID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch users"})
 	}

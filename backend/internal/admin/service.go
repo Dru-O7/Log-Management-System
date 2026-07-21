@@ -11,7 +11,7 @@ import (
 
 type Service interface {
 	GetStats(schoolID *string) (*SystemStats, error)
-	GetAllUsers(schoolID *string) ([]UserResponse, error)
+	GetAllUsers(actorRole string, actorSchoolID *uuid.UUID) ([]UserResponse, error)
 	CreateUser(req CreateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
 	UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
 	DeleteUser(id uuid.UUID) error
@@ -52,8 +52,58 @@ func (s *service) GetStats(schoolID *string) (*SystemStats, error) {
 	return s.repo.GetStats(schoolID)
 }
 
-func (s *service) GetAllUsers(schoolID *string) ([]UserResponse, error) {
-	return s.repo.GetAllUsers(schoolID)
+func (s *service) GetAllUsers(actorRole string, actorSchoolID *uuid.UUID) ([]UserResponse, error) {
+	allUsers, err := s.repo.GetAllUsers(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if actorRole == "SuperAdmin" {
+		return allUsers, nil
+	}
+
+	if actorSchoolID == nil {
+		return nil, errors.New("actor organization context required")
+	}
+
+	repoImpl, ok := s.repo.(*repository)
+	if !ok {
+		return nil, errors.New("repository conversion failed")
+	}
+
+	var actorOrg models.Organization
+	if err := repoImpl.db.Where("tenant_id = ?", *actorSchoolID).First(&actorOrg).Error; err != nil {
+		var filtered []UserResponse
+		for _, u := range allUsers {
+			if u.SchoolID != nil && *u.SchoolID == *actorSchoolID {
+				filtered = append(filtered, u)
+			}
+		}
+		return filtered, nil
+	}
+
+	var childOrgs []models.Organization
+	repoImpl.db.Where("parent_org_id = ?", actorOrg.ID).Find(&childOrgs)
+
+	allowedSchoolIDs := map[uuid.UUID]bool{
+		*actorSchoolID: true,
+	}
+	for _, child := range childOrgs {
+		if child.TenantID != nil {
+			allowedSchoolIDs[*child.TenantID] = true
+		}
+	}
+
+	var filtered []UserResponse
+	for _, u := range allUsers {
+		if u.SchoolID != nil {
+			if allowedSchoolIDs[*u.SchoolID] {
+				filtered = append(filtered, u)
+			}
+		}
+	}
+
+	return filtered, nil
 }
 
 func (s *service) CreateUser(req CreateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error) {
