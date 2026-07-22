@@ -403,7 +403,8 @@ export class AdminComponent implements OnInit {
       required_fields: dt.RequiredFields,
       sla_hours: dt.SlaHours,
       needs_parent_cosign: dt.needs_parent_cosign,
-      active: dt.Active
+      active: dt.Active,
+      school_id: dt.SchoolID
     };
     this.docTypeError = '';
     this.showDocTypeModal = true;

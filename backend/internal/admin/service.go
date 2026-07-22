@@ -467,9 +467,17 @@ func (s *service) CreateDocumentType(req CreateDocTypeRequest, actorRole string,
 		}
 	}
 
+	schoolID := req.SchoolID
+	if schoolID == uuid.Nil && actorSchoolID != nil {
+		schoolID = *actorSchoolID
+	}
+	if schoolID == uuid.Nil {
+		return nil, errors.New("school/organization ID is required")
+	}
+
 	dt := &models.DocumentType{
 		ID:             uuid.New(),
-		SchoolID:       req.SchoolID,
+		SchoolID:       schoolID,
 		Name:           req.Name,
 		Slug:           req.Slug,
 		WorkflowStages: req.WorkflowStages,
