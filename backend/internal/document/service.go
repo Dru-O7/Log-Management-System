@@ -430,6 +430,26 @@ func (s *service) GetFilePathForDownload(docID, authenticatedUserID uuid.UUID, c
 		}
 	}
 
+	// Apply dynamic user watermark for PDF downloads
+	if strings.HasSuffix(strings.ToLower(doc.FilePath), ".pdf") {
+		var user models.User
+		if err := s.repo.(*repository).db.First(&user, "id = ?", authenticatedUserID).Error; err == nil {
+			// Create a temporary file to avoid altering the original document store
+			tempFile, err := os.CreateTemp("", "download-watermark-*.pdf")
+			if err == nil {
+				tempFile.Close()
+				// Copy the original file to the temporary path
+				if err := copyFile(doc.FilePath, tempFile.Name()); err == nil {
+					// Stamp the watermark on the temp file
+					if err := stampUserWatermarkOnPDF(tempFile.Name(), user, clientIP); err == nil {
+						return tempFile.Name(), true, nil
+					}
+				}
+				os.Remove(tempFile.Name())
+			}
+		}
+	}
+
 	return doc.FilePath, false, nil
 }
 

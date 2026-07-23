@@ -3,6 +3,7 @@ package db
 
 import (
 	"log"
+	"time"
 
 	"office-file-sharing/backend/internal/shared/models"
 
@@ -39,6 +40,14 @@ func Init(databaseURL string) *gorm.DB {
 		log.Fatal("Failed to migrate database:", err)
 	}
 	log.Println("Database migration completed")
+
+	// Set connection pool limits
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetConnMaxLifetime(time.Hour)
+	}
 
 	return db
 }

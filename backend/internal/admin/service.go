@@ -15,13 +15,13 @@ type Service interface {
 	GetAllUsers(actorRole string, actorSchoolID *uuid.UUID) ([]UserResponse, error)
 	CreateUser(req CreateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
 	UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole string, actorSchoolID *uuid.UUID) (*UserResponse, error)
-	DeleteUser(id uuid.UUID, actorUserID uuid.UUID) error
+	DeleteUser(id uuid.UUID, actorUserID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error
 	GetAllDocumentTypes(actorRole string, actorSchoolID *uuid.UUID) ([]DocumentTypeResponse, error)
 	CreateDocumentType(req CreateDocTypeRequest, actorRole string, actorSchoolID *uuid.UUID) (*DocumentTypeResponse, error)
-	UpdateDocumentType(id uuid.UUID, req UpdateDocTypeRequest) (*DocumentTypeResponse, error)
-	DeleteDocumentType(id uuid.UUID) error
+	UpdateDocumentType(id uuid.UUID, req UpdateDocTypeRequest, actorRole string, actorSchoolID *uuid.UUID) (*DocumentTypeResponse, error)
+	DeleteDocumentType(id uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error
 	GetAllSchools(schoolID *string) ([]SchoolResponse, error)
-	UpdateSchool(id uuid.UUID, req UpdateSchoolRequest) (*SchoolResponse, error)
+	UpdateSchool(id uuid.UUID, req UpdateSchoolRequest, actorRole string, actorSchoolID *uuid.UUID) (*SchoolResponse, error)
 	GetAllRoles(actorRole string, actorSchoolID *uuid.UUID) ([]RoleResponse, error)
 	CreateRole(req CreateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error)
 	UpdateRole(id uuid.UUID, req UpdateRoleRequest, actorRole string, actorSchoolID *uuid.UUID) (*RoleResponse, error)
@@ -230,6 +230,9 @@ func (s *service) UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole stri
 		if actorSchoolID == nil {
 			return nil, errors.New("actor organization context required")
 		}
+		if u.SchoolID != nil && *u.SchoolID != *actorSchoolID {
+			return nil, errors.New("access denied: you are not authorized to update a user belonging to another organization")
+		}
 		targetSchoolID = actorSchoolID
 		u.SchoolID = targetSchoolID
 	}
@@ -291,7 +294,7 @@ func (s *service) UpdateUser(id uuid.UUID, req UpdateUserRequest, actorRole stri
 	}, nil
 }
 
-func (s *service) DeleteUser(id uuid.UUID, actorUserID uuid.UUID) error {
+func (s *service) DeleteUser(id uuid.UUID, actorUserID uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error {
 	if id == actorUserID {
 		return errors.New("cannot delete yourself")
 	}
@@ -302,6 +305,15 @@ func (s *service) DeleteUser(id uuid.UUID, actorUserID uuid.UUID) error {
 	}
 	if strings.EqualFold(u.Role, "SuperAdmin") {
 		return errors.New("the system SuperAdmin user cannot be deleted")
+	}
+
+	if actorRole != "SuperAdmin" {
+		if actorSchoolID == nil {
+			return errors.New("actor organization context required")
+		}
+		if u.SchoolID != nil && *u.SchoolID != *actorSchoolID {
+			return errors.New("access denied: you are not authorized to delete a user belonging to another organization")
+		}
 	}
 
 	repoImpl, ok := s.repo.(*repository)
@@ -515,10 +527,19 @@ func (s *service) CreateDocumentType(req CreateDocTypeRequest, actorRole string,
 	}, nil
 }
 
-func (s *service) UpdateDocumentType(id uuid.UUID, req UpdateDocTypeRequest) (*DocumentTypeResponse, error) {
+func (s *service) UpdateDocumentType(id uuid.UUID, req UpdateDocTypeRequest, actorRole string, actorSchoolID *uuid.UUID) (*DocumentTypeResponse, error) {
 	dt, err := s.repo.GetDocumentTypeByID(id)
 	if err != nil {
 		return nil, errors.New("document type not found")
+	}
+
+	if actorRole != "SuperAdmin" {
+		if actorSchoolID == nil {
+			return nil, errors.New("actor organization context required")
+		}
+		if dt.SchoolID == nil || *dt.SchoolID != *actorSchoolID {
+			return nil, errors.New("access denied: you are not authorized to update a document type belonging to another organization")
+		}
 	}
 
 	// If changing stages/fields, block if any active documents use this type
@@ -573,7 +594,21 @@ func (s *service) UpdateDocumentType(id uuid.UUID, req UpdateDocTypeRequest) (*D
 	}, nil
 }
 
-func (s *service) DeleteDocumentType(id uuid.UUID) error {
+func (s *service) DeleteDocumentType(id uuid.UUID, actorRole string, actorSchoolID *uuid.UUID) error {
+	dt, err := s.repo.GetDocumentTypeByID(id)
+	if err != nil {
+		return errors.New("document type not found")
+	}
+
+	if actorRole != "SuperAdmin" {
+		if actorSchoolID == nil {
+			return errors.New("actor organization context required")
+		}
+		if dt.SchoolID == nil || *dt.SchoolID != *actorSchoolID {
+			return errors.New("access denied: you are not authorized to delete a document type belonging to another organization")
+		}
+	}
+
 	repoImpl, ok := s.repo.(*repository)
 	if !ok {
 		return errors.New("invalid repository type")
@@ -594,10 +629,16 @@ func (s *service) GetAllSchools(schoolID *string) ([]SchoolResponse, error) {
 	return s.repo.GetAllSchools(schoolID)
 }
 
-func (s *service) UpdateSchool(id uuid.UUID, req UpdateSchoolRequest) (*SchoolResponse, error) {
+func (s *service) UpdateSchool(id uuid.UUID, req UpdateSchoolRequest, actorRole string, actorSchoolID *uuid.UUID) (*SchoolResponse, error) {
 	school, err := s.repo.GetSchoolByID(id)
 	if err != nil {
 		return nil, errors.New("school not found")
+	}
+
+	if actorRole != "SuperAdmin" {
+		if actorSchoolID == nil || school.ID != *actorSchoolID {
+			return nil, errors.New("access denied: you are not authorized to update details for this organization")
+		}
 	}
 
 	if req.Name != "" {

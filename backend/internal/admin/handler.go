@@ -112,7 +112,16 @@ func (h *Handler) DeleteUser(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized: invalid user ID"})
 	}
 
-	if err := h.service.DeleteUser(id, actorUserID); err != nil {
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	if err := h.service.DeleteUser(id, actorUserID, actorRole, actorSchoolID); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"message": "User deleted successfully"})
@@ -168,7 +177,17 @@ func (h *Handler) UpdateDocumentType(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
-	dt, err := h.service.UpdateDocumentType(id, req)
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	dt, err := h.service.UpdateDocumentType(id, req, actorRole, actorSchoolID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
@@ -181,8 +200,18 @@ func (h *Handler) DeleteDocumentType(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid document type ID"})
 	}
-	if err := h.service.DeleteDocumentType(id); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete document type"})
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	if err := h.service.DeleteDocumentType(id, actorRole, actorSchoolID); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"message": "Document type deleted successfully"})
 }
@@ -211,7 +240,17 @@ func (h *Handler) UpdateSchool(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
-	school, err := h.service.UpdateSchool(id, req)
+
+	actorRole, _ := c.Get("actor_role").(string)
+	actorSchoolIDStr, _ := c.Get("actor_school_id").(string)
+	var actorSchoolID *uuid.UUID
+	if actorSchoolIDStr != "" {
+		if u, err := uuid.Parse(actorSchoolIDStr); err == nil {
+			actorSchoolID = &u
+		}
+	}
+
+	school, err := h.service.UpdateSchool(id, req, actorRole, actorSchoolID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
