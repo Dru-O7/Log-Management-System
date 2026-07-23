@@ -1,4 +1,4 @@
-<div class="mt-4 max-w-7xl mx-auto px-4">
+<div class="mt-4 max-w-7xl mx-auto px-4 relative">
   <!-- Loading State -->
   <div *ngIf="loading" class="py-16 text-center">
     <div
@@ -1337,22 +1337,27 @@
                       class="text-xs font-bold text-[var(--text-primary)]"
                       >{{ item.Action }}</span
                     >
-                    <div class="text-xs text-[var(--text-secondary)] mt-0.5">
-                      <span class="font-medium text-[var(--text-primary)]">{{
-                        item.Actor?.Name || item.Actor?.name
-                      }}</span>
-                      <span
-                        *ngIf="item.Target"
-                        class="text-[var(--text-muted)]"
-                      >
-                        &nbsp;&rarr;&nbsp;
+                    <div class="text-xs text-[var(--text-secondary)] mt-0.5 flex flex-col gap-0.5">
+                      <div>
+                        <span class="font-medium text-[var(--text-primary)]">{{
+                          item.Actor?.Name || item.Actor?.name
+                        }}</span>
+                        <span class="text-[10px] text-[var(--text-secondary)] font-semibold bg-[var(--border)]/30 px-1.5 py-0.5 rounded ml-1.5">
+                          {{ item.Actor?.Role || item.Actor?.role || 'User' }} &bull; {{ item.Actor?.School?.Name || item.Actor?.SchoolName || 'DHE' }}
+                        </span>
+                      </div>
+                      <div *ngIf="item.Target" class="mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[var(--text-secondary)]">&rarr;</span>
                         <span class="font-medium text-[var(--text-primary)]">{{
                           item.Target?.Name || item.Target?.name
                         }}</span>
-                      </span>
+                        <span class="text-[10px] text-[var(--text-secondary)] font-semibold bg-[var(--border)]/30 px-1.5 py-0.5 rounded">
+                          {{ item.Target?.Role || item.Target?.role || 'User' }} &bull; {{ item.Target?.School?.Name || item.Target?.SchoolName || 'DHE' }}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <span class="text-[10px] text-[var(--text-muted)] shrink-0">{{
+                  <span class="text-[10px] text-[var(--text-secondary)] font-medium shrink-0">{{
                     item.CreatedAt | date: "medium"
                   }}</span>
                 </div>

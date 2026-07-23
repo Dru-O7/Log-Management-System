@@ -111,22 +111,24 @@ type FileResponse struct {
 }
 
 type FileShareResponse struct {
-	ID          uuid.UUID  `json:"ID"`
-	FileID      uuid.UUID  `json:"FileID"`
-	UserID      uuid.UUID  `json:"UserID"`
-	Status      string     `json:"Status"`
-	Remarks     string     `json:"Remarks"`
-	GrantedByID *uuid.UUID `json:"GrantedByID,omitempty"`
-	ExpiresAt   *time.Time `json:"ExpiresAt,omitempty"`
-	TargetOrgID *uuid.UUID `json:"TargetOrgID,omitempty"`
-	CreatedAt   time.Time  `json:"CreatedAt"`
-	UpdatedAt   time.Time  `json:"UpdatedAt"`
+	ID           uuid.UUID  `json:"ID"`
+	FileID       uuid.UUID  `json:"FileID"`
+	UserID       uuid.UUID  `json:"UserID"`
+	Status       string     `json:"Status"`
+	Remarks      string     `json:"Remarks"`
+	GrantedByID  *uuid.UUID `json:"GrantedByID,omitempty"`
+	ExpiresAt    *time.Time `json:"ExpiresAt,omitempty"`
+	TargetOrgID  *uuid.UUID `json:"TargetOrgID,omitempty"`
+	TargetRoleID *uuid.UUID `json:"TargetRoleID,omitempty"`
+	CreatedAt    time.Time  `json:"CreatedAt"`
+	UpdatedAt    time.Time  `json:"UpdatedAt"`
 
-	FileTitle     string `json:"FileTitle"`
-	FileNumber    string `json:"FileNumber"`
-	Requester     string `json:"Requester"`
-	GrantedBy     string `json:"GrantedBy,omitempty"`
-	TargetOrgName string `json:"TargetOrgName,omitempty"`
+	FileTitle      string `json:"FileTitle"`
+	FileNumber     string `json:"FileNumber"`
+	Requester      string `json:"Requester"`
+	GrantedBy      string `json:"GrantedBy,omitempty"`
+	TargetOrgName  string `json:"TargetOrgName,omitempty"`
+	TargetRoleName string `json:"TargetRoleName,omitempty"`
 }
 
 type NoteResponse struct {

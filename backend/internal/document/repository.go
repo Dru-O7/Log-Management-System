@@ -157,7 +157,7 @@ func (r *repository) CreateHistory(history *models.WorkflowHistory) error {
 
 func (r *repository) GetHistoryByDocumentID(docID uuid.UUID) ([]models.WorkflowHistory, error) {
 	var history []models.WorkflowHistory
-	err := r.db.Preload("Actor").Preload("Target").Where("document_id = ?", docID).Order("created_at asc").Find(&history).Error
+	err := r.db.Preload("Actor").Preload("Actor.School").Preload("Target").Preload("Target.School").Where("document_id = ?", docID).Order("created_at asc").Find(&history).Error
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (r *repository) GetHistoryByDocumentID(docID uuid.UUID) ([]models.WorkflowH
 
 func (r *repository) GetHistoryByFileID(fileID uuid.UUID) ([]models.WorkflowHistory, error) {
 	var history []models.WorkflowHistory
-	err := r.db.Preload("Actor").Preload("Target").Where("file_id = ?", fileID).Order("created_at asc").Find(&history).Error
+	err := r.db.Preload("Actor").Preload("Actor.School").Preload("Target").Preload("Target.School").Where("file_id = ?", fileID).Order("created_at asc").Find(&history).Error
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (r *repository) GetHistoryByFileID(fileID uuid.UUID) ([]models.WorkflowHist
 
 func (r *repository) GetHistoryByUserID(userID uuid.UUID) ([]models.WorkflowHistory, error) {
 	var history []models.WorkflowHistory
-	err := r.db.Preload("Actor").Preload("Target").Preload("Document").Preload("Document.Uploader").Preload("Document.CurrentOwner").
+	err := r.db.Preload("Actor").Preload("Actor.School").Preload("Target").Preload("Target.School").Preload("Document").Preload("Document.Uploader").Preload("Document.CurrentOwner").
 		Where("actor_id = ? OR target_id = ?", userID, userID).
 		Order("created_at desc").
 		Find(&history).Error

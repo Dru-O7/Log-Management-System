@@ -69,9 +69,7 @@ export class CentralRepositoryComponent implements OnInit {
       }
     });
 
-    if (this.isAuthority()) {
-      this.loadPendingRequests();
-    }
+    this.loadPendingRequests();
   }
 
   loadPendingRequests() {
@@ -94,7 +92,8 @@ export class CentralRepositoryComponent implements OnInit {
   isAuthority(): boolean {
     if (!this.currentUser) return false;
     const role = this.currentUser.Role || this.currentUser.role;
-    return role === 'SuperAdmin' || role === 'Admin' || role === 'School Admin' || role === 'Principal' || role === 'DHE' || (role && role.startsWith('Admin '));
+    const isStdAuth = role === 'SuperAdmin' || role === 'Admin' || role === 'School Admin' || role === 'Principal' || role === 'DHE' || (role && role.startsWith('Admin '));
+    return isStdAuth || this.pendingRequests.length > 0;
   }
 
   onSearch() {

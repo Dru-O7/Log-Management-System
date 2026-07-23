@@ -150,11 +150,14 @@ textarea { resize: vertical; min-height: 80px; }
 .btn-secondary:hover { background: #f1f5f9; }
 
 .screen-watermark {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 5;
   background-repeat: repeat;
-  opacity: 0.45;
+  opacity: 0.25;
   transition: opacity 0.3s;
 }

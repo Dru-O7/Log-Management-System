@@ -399,22 +399,6 @@ func (s *service) GetFilePathForDownload(docID, authenticatedUserID uuid.UUID, c
 		}
 	}
 
-	if isClosedOrArchived {
-		// Log access audit trail
-		history := &models.WorkflowHistory{
-			ID:        uuid.New(),
-			SchoolID:  doc.SchoolID,
-			FileID:    doc.FileID,
-			ActorID:   authenticatedUserID,
-			Action:    "Approved",
-			Remarks:   "Downloaded file from Central Repository. IP: " + clientIP,
-			Stage:     1,
-			Version:   1,
-			EventType: "file_access",
-		}
-		_ = s.repo.CreateHistory(history)
-	}
-
 	return doc.FilePath, false, nil
 }
 
@@ -1945,9 +1929,11 @@ func (s *service) GetFileDetails(fileID, authenticatedUserID uuid.UUID, source s
 	var noteCount int64
 	s.repo.(*repository).db.Model(&models.Note{}).Where("file_id = ? AND author_id = ?", fileID, authenticatedUserID).Count(&noteCount)
 
-	hasAccess := isCurrentOwner || isDHE || isCreator || isSameSchool || noteCount > 0
-	if !hasAccess && (file.Status == models.FileStatusClosed || file.Status == models.FileStatusArchived) {
+	var hasAccess bool
+	if file.Status == models.FileStatusClosed || file.Status == models.FileStatusArchived {
 		hasAccess, _ = s.CheckFileAccess(fileID, authenticatedUserID)
+	} else {
+		hasAccess = isCurrentOwner || isDHE || isCreator || isSameSchool || noteCount > 0
 	}
 
 	if !hasAccess {
@@ -2447,54 +2433,48 @@ func (s *service) RequestFileAccess(fileID, authenticatedUserID uuid.UUID, remar
 	}
 
 	var targetOrgID *uuid.UUID
-	var closeEvent models.WorkflowHistory
+	var targetRoleID *uuid.UUID
 
-	// Case 1: Check if closed/archived by a higher authority
-	if err := s.repo.(*repository).db.Preload("Actor").
-		Where("file_id = ? AND action IN (?)", fileID, []string{"Closed", "Archived"}).
-		Order("created_at desc").First(&closeEvent).Error; err == nil {
-		if closeEvent.Actor.SchoolID != nil && (file.SchoolID == nil || *closeEvent.Actor.SchoolID != *file.SchoolID) {
-			if closerOrg, err := s.GetOrgForSchool(*closeEvent.Actor.SchoolID); err == nil {
-				if creatorOrgID != nil {
-					ancestors, _ := s.GetOrgAncestors(*creatorOrgID)
-					isAncestor := false
-					for _, ancID := range ancestors {
-						if ancID == closerOrg.ID {
-							isAncestor = true
-							break
-						}
-					}
-					if isAncestor {
-						targetOrgID = &closerOrg.ID
-					}
-				}
+	// Determine tree-based access targets
+	if requesterOrgID != nil && creatorOrgID != nil && *requesterOrgID == *creatorOrgID {
+		// Same organization: ask access to the admin (his one level above)
+		var reqRole models.Role
+		if err := s.repo.(*repository).db.First(&reqRole, "role_name = ? AND tenant_id = ?", requester.Role, requester.SchoolID).Error; err == nil && reqRole.ParentRoleID != nil {
+			targetRoleID = reqRole.ParentRoleID
+			targetOrgID = creatorOrgID
+		} else {
+			// Requester is already at the top role in their school (e.g. School Admin),
+			// route to parent organization POC/admin
+			var currentOrg models.Organization
+			if err := s.repo.(*repository).db.First(&currentOrg, "id = ?", *requesterOrgID).Error; err == nil && currentOrg.ParentOrgID != nil {
+				targetOrgID = currentOrg.ParentOrgID
+			} else {
+				// No parent organization (root level), fall back to SuperAdmin
+				targetOrgID = nil
 			}
 		}
-	}
-
-	// Case 2 & 3: Fall back to same organization or common parent org
-	if targetOrgID == nil {
-		if requesterOrgID != nil && creatorOrgID != nil {
-			if *requesterOrgID == *creatorOrgID {
-				targetOrgID = creatorOrgID
-			} else {
-				commonParent, _ := s.FindCommonParentOrg(*requesterOrgID, *creatorOrgID)
-				targetOrgID = commonParent
-			}
-		} else if creatorOrgID != nil {
+	} else if requesterOrgID != nil {
+		// Sibling node or different organization: request goes to immediate parent organization (one level above)
+		var currentOrg models.Organization
+		if err := s.repo.(*repository).db.First(&currentOrg, "id = ?", *requesterOrgID).Error; err == nil && currentOrg.ParentOrgID != nil {
+			targetOrgID = currentOrg.ParentOrgID
+		} else {
 			targetOrgID = creatorOrgID
 		}
+	} else if creatorOrgID != nil {
+		targetOrgID = creatorOrgID
 	}
 
 	share := &models.FileShare{
-		ID:          uuid.New(),
-		FileID:      fileID,
-		UserID:      authenticatedUserID,
-		Status:      "pending",
-		Remarks:     remarks,
-		TargetOrgID: targetOrgID,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:           uuid.New(),
+		FileID:       fileID,
+		UserID:       authenticatedUserID,
+		Status:       "pending",
+		Remarks:      remarks,
+		TargetOrgID:  targetOrgID,
+		TargetRoleID: targetRoleID,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	if err := s.repo.CreateFileShare(share); err != nil {
@@ -2525,35 +2505,21 @@ func (s *service) ListPendingAccessRequests(authenticatedUserID uuid.UUID) ([]Fi
 	}
 
 	var shares []models.FileShare
-	var err error
-	if user.Role == "SuperAdmin" {
-		shares, err = s.repo.GetPendingFileShares()
-	} else {
-		// Find organizations where this user is POC or school tenant admin
-		var orgs []models.Organization
-		s.repo.(*repository).db.Where("point_of_contact_id = ? OR tenant_id = ?", user.ID, user.SchoolID).Find(&orgs)
-		
-		var orgIDs []uuid.UUID
-		for _, o := range orgs {
-			orgIDs = append(orgIDs, o.ID)
-		}
-
-		if len(orgIDs) > 0 {
-			err = s.repo.(*repository).db.Preload("File").Preload("User").Preload("GrantedBy").
-				Where("status = ? AND target_org_id IN (?)", "pending", orgIDs).Find(&shares).Error
-		} else if user.SchoolID != nil {
-			shares, err = s.repo.GetPendingFileSharesBySchool(*user.SchoolID)
-		} else {
-			shares = []models.FileShare{}
-		}
-	}
-
+	err := s.repo.(*repository).db.Preload("File").Preload("User").Preload("GrantedBy").
+		Where("status = ?", "pending").Find(&shares).Error
 	if err != nil {
 		return nil, err
 	}
 
-	responses := make([]FileShareResponse, len(shares))
-	for i, sh := range shares {
+	var filteredShares []models.FileShare
+	for _, sh := range shares {
+		if s.userCanApprove(user, sh) {
+			filteredShares = append(filteredShares, sh)
+		}
+	}
+
+	responses := make([]FileShareResponse, len(filteredShares))
+	for i, sh := range filteredShares {
 		responses[i] = *s.toFileShareResponse(&sh)
 	}
 	return responses, nil
@@ -2575,28 +2541,8 @@ func (s *service) ApproveOrRejectAccessRequest(shareID, authenticatedUserID uuid
 		return nil, err
 	}
 
-	isActorAuthority := actor.Role == "SuperAdmin" || actor.Role == "Admin" || actor.Role == "School Admin" || actor.Role == "Principal" || actor.Role == "DHE" || strings.HasPrefix(actor.Role, "Admin ")
-	if !isActorAuthority {
-		return nil, errors.New("only higher authorities can approve access requests")
-	}
-
-	if actor.Role != "SuperAdmin" {
-		if share.TargetOrgID != nil {
-			var count int64
-			s.repo.(*repository).db.Model(&models.Organization{}).
-				Where("id = ? AND (point_of_contact_id = ? OR tenant_id = ?)", *share.TargetOrgID, actor.ID, actor.SchoolID).
-				Count(&count)
-			if count == 0 {
-				return nil, errors.New("you are not authorized to approve requests for this target organization")
-			}
-		} else {
-			var file models.File
-			if err := s.repo.(*repository).db.First(&file, "id = ?", share.FileID).Error; err == nil {
-				if file.SchoolID != nil && actor.SchoolID != nil && *file.SchoolID != *actor.SchoolID {
-					return nil, errors.New("you are not authorized to approve requests for this school")
-				}
-			}
-		}
+	if !s.userCanApprove(actor, *share) {
+		return nil, errors.New("you are not authorized to resolve this access request")
 	}
 
 	share.Status = status
@@ -2645,22 +2591,37 @@ func (s *service) CheckFileAccess(fileID, userID uuid.UUID) (bool, error) {
 		return false, err
 	}
 
-	// SuperAdmin and Admin have full access
+	// 1. SuperAdmin and Admin have full access
 	if user.Role == "SuperAdmin" || user.Role == "Admin" {
 		return true, nil
 	}
-	// School Admin or principal of the same school can see closed/archived files directly
-	isSchoolAdmin := user.Role == "School Admin" || user.Role == "Principal" || strings.HasPrefix(user.Role, "Admin ")
+
+	// 2. School Admin or principal of the same school can see closed/archived files directly (top level)
+	isSchoolAdmin := user.Role == "School Admin" || user.Role == "Principal" || user.Role == "DHE" || strings.HasPrefix(user.Role, "Admin ")
 	if isSchoolAdmin && file.SchoolID != nil && user.SchoolID != nil && *file.SchoolID == *user.SchoolID {
 		return true, nil
 	}
 
-	// Creator or current owner has access
-	if file.CreatorID == userID || file.CurrentOwnerID == userID {
-		return true, nil
+	// 3. Admin of parent organization has access directly (top level)
+	if file.SchoolID != nil {
+		if fileOrg, err := s.GetOrgForSchool(*file.SchoolID); err == nil {
+			ancestors, _ := s.GetOrgAncestors(fileOrg.ID)
+			for _, ancID := range ancestors {
+				var org models.Organization
+				if err := s.repo.(*repository).db.First(&org, "id = ?", ancID).Error; err == nil {
+					if org.PointOfContactID != nil && *org.PointOfContactID == userID {
+						return true, nil
+					}
+					if org.TenantID != nil && user.SchoolID != nil && *org.TenantID == *user.SchoolID {
+						return true, nil
+					}
+				}
+			}
+		}
 	}
 
-	// Check if user has active/valid share permission
+	// 4. Lower-level users (teachers, vocational, etc.) must ask for access first.
+	// Only allow opening if they have an active approved FileShare.
 	share, err := s.repo.GetFileShare(fileID, userID)
 	if err == nil && share.Status == "approved" {
 		if share.ExpiresAt == nil || share.ExpiresAt.After(time.Now()) {
@@ -2669,6 +2630,42 @@ func (s *service) CheckFileAccess(fileID, userID uuid.UUID) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (s *service) userCanApprove(user models.User, share models.FileShare) bool {
+	if user.Role == "SuperAdmin" {
+		return true
+	}
+
+	// Case 1: TargetRoleID is set (same-org parent role routing)
+	if share.TargetRoleID != nil {
+		var userRole models.Role
+		if err := s.repo.(*repository).db.First(&userRole, "role_name = ? AND tenant_id = ?", user.Role, user.SchoolID).Error; err == nil {
+			if userRole.ID == *share.TargetRoleID {
+				return true
+			}
+		}
+	}
+
+	// Case 2: TargetOrgID is set (different-org / parent org routing)
+	if share.TargetOrgID != nil && share.TargetRoleID == nil {
+		var org models.Organization
+		if err := s.repo.(*repository).db.First(&org, "id = ?", *share.TargetOrgID).Error; err == nil {
+			// User is the point of contact, or user is in the school and has a high role
+			if org.PointOfContactID != nil && *org.PointOfContactID == user.ID {
+				return true
+			}
+			if org.TenantID != nil && user.SchoolID != nil && *org.TenantID == *user.SchoolID {
+				// Ensure user is an admin/higher authority
+				isActorAuthority := user.Role == "Admin" || user.Role == "School Admin" || user.Role == "Principal" || user.Role == "DHE" || strings.HasPrefix(user.Role, "Admin ")
+				if isActorAuthority {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 func (s *service) toFileShareResponse(sh *models.FileShare) *FileShareResponse {
@@ -2713,22 +2710,32 @@ func (s *service) toFileShareResponse(sh *models.FileShare) *FileShareResponse {
 		}
 	}
 
+	var targetRoleName string
+	if sh.TargetRoleID != nil {
+		var r models.Role
+		if err := s.repo.(*repository).db.First(&r, "id = ?", *sh.TargetRoleID).Error; err == nil {
+			targetRoleName = r.RoleName
+		}
+	}
+
 	return &FileShareResponse{
-		ID:            sh.ID,
-		FileID:        sh.FileID,
-		UserID:        sh.UserID,
-		Status:        sh.Status,
-		Remarks:       sh.Remarks,
-		GrantedByID:   sh.GrantedByID,
-		ExpiresAt:     sh.ExpiresAt,
-		TargetOrgID:   sh.TargetOrgID,
-		CreatedAt:     sh.CreatedAt,
-		UpdatedAt:     sh.UpdatedAt,
-		FileTitle:     fileTitle,
-		FileNumber:    fileNumber,
-		Requester:     requesterName,
-		GrantedBy:     granterName,
-		TargetOrgName: targetOrgName,
+		ID:             sh.ID,
+		FileID:         sh.FileID,
+		UserID:         sh.UserID,
+		Status:         sh.Status,
+		Remarks:        sh.Remarks,
+		GrantedByID:    sh.GrantedByID,
+		ExpiresAt:      sh.ExpiresAt,
+		TargetOrgID:    sh.TargetOrgID,
+		TargetRoleID:   sh.TargetRoleID,
+		CreatedAt:      sh.CreatedAt,
+		UpdatedAt:      sh.UpdatedAt,
+		FileTitle:      fileTitle,
+		FileNumber:     fileNumber,
+		Requester:      requesterName,
+		GrantedBy:      granterName,
+		TargetOrgName:  targetOrgName,
+		TargetRoleName: targetRoleName,
 	}
 }
 
