@@ -386,17 +386,20 @@ func (base *FileShare) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type Message struct {
-	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	SenderID    uuid.UUID `gorm:"type:uuid;not null;index"`
-	RecipientID uuid.UUID `gorm:"type:uuid;not null;index"`
-	Subject     string    `gorm:"size:255;not null"`
-	Body        string    `gorm:"type:text;not null"`
-	IsRead      bool      `gorm:"default:false;not null"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID                 uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	SenderID           uuid.UUID  `gorm:"type:uuid;not null;index"`
+	RecipientID        *uuid.UUID `gorm:"type:uuid;index"`
+	Subject            string     `gorm:"size:255"`
+	Body               string     `gorm:"type:text"`
+	IsRead             bool       `gorm:"default:false;not null"`
+	IsDraft            bool       `gorm:"default:false;not null;index"`
+	DeletedBySender    bool       `gorm:"default:false;not null;index"`
+	DeletedByRecipient bool       `gorm:"default:false;not null;index"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 
-	Sender    User `gorm:"foreignKey:SenderID"`
-	Recipient User `gorm:"foreignKey:RecipientID"`
+	Sender    User  `gorm:"foreignKey:SenderID"`
+	Recipient *User `gorm:"foreignKey:RecipientID"`
 }
 
 func (base *Message) BeforeCreate(tx *gorm.DB) (err error) {

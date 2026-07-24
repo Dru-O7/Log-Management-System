@@ -301,20 +301,56 @@ export class ApiService {
     return this.http.get<any>(`${this.apiUrl}/messages/by-email?email=${encodeURIComponent(email)}`);
   }
 
-  sendMessage(recipientId: string, subject: string, body: string) {
-    return this.http.post<any>(`${this.apiUrl}/messages`, {
+  sendMessage(recipientId: string, subject: string, body: string, draftId?: string) {
+    const payload: any = {
       recipient_id: recipientId,
       subject: subject,
       body: body
-    });
+    };
+    if (draftId) {
+      payload.draft_id = draftId;
+    }
+    return this.http.post<any>(`${this.apiUrl}/messages`, payload);
   }
 
-  getInboxMessages() {
-    return this.http.get<any[]>(`${this.apiUrl}/messages/inbox`);
+  getInboxMessages(page: number = 1, limit: number = 20, search: string = '') {
+    return this.http.get<any>(`${this.apiUrl}/messages/inbox?page=${page}&limit=${limit}&q=${encodeURIComponent(search)}`);
   }
 
-  getSentMessages() {
-    return this.http.get<any[]>(`${this.apiUrl}/messages/sent`);
+  getSentMessages(page: number = 1, limit: number = 20, search: string = '') {
+    return this.http.get<any>(`${this.apiUrl}/messages/sent?page=${page}&limit=${limit}&q=${encodeURIComponent(search)}`);
+  }
+
+  getDrafts() {
+    return this.http.get<any[]>(`${this.apiUrl}/messages/drafts`);
+  }
+
+  saveMessageDraft(draft: { id?: string; recipient_id?: string; subject?: string; body?: string }) {
+    return this.http.post<any>(`${this.apiUrl}/messages/drafts`, draft);
+  }
+
+  deleteMessageDraft(draftId: string) {
+    return this.http.delete<any>(`${this.apiUrl}/messages/drafts/${draftId}`);
+  }
+
+  getTrash() {
+    return this.http.get<any[]>(`${this.apiUrl}/messages/trash`);
+  }
+
+  toggleReadStatus(messageId: string, isRead: boolean) {
+    return this.http.patch<any>(`${this.apiUrl}/messages/${messageId}/read`, { is_read: isRead });
+  }
+
+  softDeleteMessage(messageId: string) {
+    return this.http.delete<any>(`${this.apiUrl}/messages/${messageId}`);
+  }
+
+  restoreMessage(messageId: string) {
+    return this.http.post<any>(`${this.apiUrl}/messages/${messageId}/restore`, {});
+  }
+
+  getUnreadCount() {
+    return this.http.get<{ count: number }>(`${this.apiUrl}/messages/unread-count`);
   }
 
   getMessageDetail(id: string) {

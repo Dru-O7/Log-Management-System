@@ -1,7 +1,9 @@
-import { Component, OnInit, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, AfterViewChecked, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { Subject, Subscription, interval } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -24,8 +26,11 @@ export interface ChatThread {
   templateUrl: './messages.component.html',
   styleUrls: ['./messages.component.css']
 })
-export class MessagesComponent implements OnInit, AfterViewChecked {
+export class MessagesComponent implements OnInit, AfterViewChecked, OnDestroy {
   @ViewChild('chatScrollContainer') private chatScrollContainer!: ElementRef;
+
+  // Sidebar section: 'chats' | 'drafts' | 'trash'
+  activeSection: 'chats' | 'drafts' | 'trash' = 'chats';
 
   isLoading: boolean = false;
   allMessages: any[] = [];
@@ -33,11 +38,31 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
   selectedContact: { id: string; name: string; email: string; role: string } | null = null;
   activeConversationMessages: any[] = [];
 
-  // Chat Input Dock State
+  // Pagination & Search in Messages
+  inboxMessages: any[] = [];
+  sentMessages: any[] = [];
+  draftsList: any[] = [];
+  trashList: any[] = [];
+
+  inboxPage: number = 1;
+  sentPage: number = 1;
+  pageSize: number = 20;
+  totalInboxCount: number = 0;
+  totalSentCount: number = 0;
+  hasMoreInbox: boolean = false;
+  hasMoreSent: boolean = false;
+
+  messageFilterQuery: string = '';
+  private messageSearchSubject = new Subject<string>();
+
+  // Chat Input Dock State & Drafts
   chatInput: string = '';
   chatSubject: string = '';
   showSubjectInput: boolean = false;
   isSending: boolean = false;
+  currentDraftId: string | null = null;
+  validationError: string | null = null;
+  private autoSaveDraftSubject = new Subject<void>();
 
   // Search & New Chat Modal State
   searchQuery: string = '';
@@ -46,11 +71,19 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
   searchError: string | null = null;
   activeTab: 'chats' | 'search' = 'chats';
 
+  // Search Cache & Debouncing
+  private recipientSearchSubject = new Subject<string>();
+  private searchCache = new Map<string, any[]>();
+
+  // Unread Count
+  inboxUnreadCount: number = 0;
+
   // Toast feedback
   toastMessage: string | null = null;
   toastType: 'success' | 'error' = 'success';
 
   private shouldScrollToBottom: boolean = false;
+  private subs: Subscription[] = [];
 
   constructor(
     private api: ApiService,
@@ -59,8 +92,21 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
   ) {}
 
   ngOnInit() {
+    this.setupSearchDebounce();
+    this.setupAutoSaveDraftDebounce();
+    this.setupMessageSearchDebounce();
     this.loadData();
     this.checkQueryParams();
+    this.refreshUnreadCount();
+
+    const pollSub = interval(8000).subscribe(() => {
+      this.refreshQuietly();
+    });
+    this.subs.push(pollSub);
+  }
+
+  ngOnDestroy() {
+    this.subs.forEach(s => s.unsubscribe());
   }
 
   checkQueryParams() {
@@ -75,14 +121,15 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
   }
 
   openChatByUserId(userId: string) {
-    const existingThread = this.chatThreads.find(t => t.contact.id === userId);
+    const normId = String(userId || '').toLowerCase();
+    const existingThread = this.chatThreads.find(t => String(t.contact.id || '').toLowerCase() === normId);
     if (existingThread) {
       this.selectContact(existingThread.contact);
       return;
     }
     this.api.searchUsers(userId).subscribe({
       next: (results) => {
-        const found = (results || []).find(u => (u.id || u.ID) === userId);
+        const found = (results || []).find(u => String(u.id || u.ID || '').toLowerCase() === normId);
         if (found) {
           this.startChatWithUser(found);
         }
@@ -111,13 +158,56 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
     return this.auth.getCurrentUser();
   }
 
+  // ── Debounce Setup ──────────────────────────────────────────────────────────
+
+  setupSearchDebounce() {
+    const sub = this.recipientSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(q => {
+      this.executeRecipientSearch(q);
+    });
+    this.subs.push(sub);
+  }
+
+  setupAutoSaveDraftDebounce() {
+    const sub = this.autoSaveDraftSubject.pipe(
+      debounceTime(1000)
+    ).subscribe(() => {
+      this.performAutoSaveDraft();
+    });
+    this.subs.push(sub);
+  }
+
+  setupMessageSearchDebounce() {
+    const sub = this.messageSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged()
+    ).subscribe(() => {
+      this.inboxPage = 1;
+      this.sentPage = 1;
+      this.loadData();
+    });
+    this.subs.push(sub);
+  }
+
+  // ── Data Loading & Pagination ──────────────────────────────────────────────
+
   loadData() {
     this.isLoading = true;
-    this.api.getInboxMessages().subscribe({
-      next: (inbox) => {
-        this.api.getSentMessages().subscribe({
-          next: (sent) => {
-            this.combineAndGroupMessages(inbox || [], sent || []);
+    this.api.getInboxMessages(this.inboxPage, this.pageSize, this.messageFilterQuery).subscribe({
+      next: (inboxRes) => {
+        this.inboxMessages = inboxRes.messages || [];
+        this.totalInboxCount = inboxRes.total || 0;
+        this.hasMoreInbox = this.inboxMessages.length < this.totalInboxCount;
+
+        this.api.getSentMessages(this.sentPage, this.pageSize, this.messageFilterQuery).subscribe({
+          next: (sentRes) => {
+            this.sentMessages = sentRes.messages || [];
+            this.totalSentCount = sentRes.total || 0;
+            this.hasMoreSent = this.sentMessages.length < this.totalSentCount;
+
+            this.combineAndGroupMessages(this.inboxMessages, this.sentMessages);
             this.isLoading = false;
           },
           error: (err) => {
@@ -131,6 +221,83 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
         this.isLoading = false;
       }
     });
+
+    this.loadDrafts();
+    this.loadTrash();
+    this.refreshUnreadCount();
+  }
+
+  loadMoreInbox() {
+    if (!this.hasMoreInbox) return;
+    this.inboxPage++;
+    this.api.getInboxMessages(this.inboxPage, this.pageSize, this.messageFilterQuery).subscribe({
+      next: (res) => {
+        const newMsgs = res.messages || [];
+        this.inboxMessages = [...this.inboxMessages, ...newMsgs];
+        this.totalInboxCount = res.total || 0;
+        this.hasMoreInbox = this.inboxMessages.length < this.totalInboxCount;
+        this.combineAndGroupMessages(this.inboxMessages, this.sentMessages);
+      }
+    });
+  }
+
+  loadMoreSent() {
+    if (!this.hasMoreSent) return;
+    this.sentPage++;
+    this.api.getSentMessages(this.sentPage, this.pageSize, this.messageFilterQuery).subscribe({
+      next: (res) => {
+        const newMsgs = res.messages || [];
+        this.sentMessages = [...this.sentMessages, ...newMsgs];
+        this.totalSentCount = res.total || 0;
+        this.hasMoreSent = this.sentMessages.length < this.totalSentCount;
+        this.combineAndGroupMessages(this.inboxMessages, this.sentMessages);
+      }
+    });
+  }
+
+  loadDrafts() {
+    this.api.getDrafts().subscribe({
+      next: (drafts) => {
+        this.draftsList = drafts || [];
+      }
+    });
+  }
+
+  loadTrash() {
+    this.api.getTrash().subscribe({
+      next: (trash) => {
+        this.trashList = trash || [];
+      }
+    });
+  }
+
+  refreshQuietly() {
+    this.api.getInboxMessages(this.inboxPage, this.pageSize, this.messageFilterQuery).subscribe({
+      next: (inboxRes) => {
+        this.inboxMessages = inboxRes.messages || [];
+        this.totalInboxCount = inboxRes.total || 0;
+        this.api.getSentMessages(this.sentPage, this.pageSize, this.messageFilterQuery).subscribe({
+          next: (sentRes) => {
+            this.sentMessages = sentRes.messages || [];
+            this.totalSentCount = sentRes.total || 0;
+            this.combineAndGroupMessages(this.inboxMessages, this.sentMessages);
+          }
+        });
+      }
+    });
+    this.refreshUnreadCount();
+  }
+
+  refreshUnreadCount() {
+    this.api.getUnreadCount().subscribe({
+      next: (res) => {
+        this.inboxUnreadCount = res.count || 0;
+      }
+    });
+  }
+
+  onMessageFilterInput() {
+    this.messageSearchSubject.next(this.messageFilterQuery);
   }
 
   normalizeContact(c: any): { id: string; name: string; email: string; role: string } | null {
@@ -146,14 +313,16 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
   }
 
   combineAndGroupMessages(inbox: any[], sent: any[]) {
-    const currentUserId = this.currentUser?.id || this.currentUser?.ID;
+    const currentUserId = String(this.currentUser?.id || this.currentUser?.ID || '').toLowerCase();
     this.allMessages = [...inbox, ...sent];
 
     const threadMap = new Map<string, ChatThread>();
 
     for (const msg of this.allMessages) {
-      const isIncoming = msg.recipient_id === currentUserId;
-      const otherId = isIncoming ? msg.sender_id : msg.recipient_id;
+      const recipientId = String(msg.recipient_id || '').toLowerCase();
+      const senderId = String(msg.sender_id || '').toLowerCase();
+      const isIncoming = recipientId === currentUserId;
+      const otherId = isIncoming ? senderId : recipientId;
       const otherName = isIncoming ? msg.sender_name : msg.recipient_name;
       const otherEmail = isIncoming ? msg.sender_email : msg.recipient_email;
       const otherRole = isIncoming ? msg.sender_role : msg.recipient_role;
@@ -182,23 +351,21 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
       }
     }
 
-    // Sort messages in each thread chronologically (oldest to newest for chat layout)
     this.chatThreads = Array.from(threadMap.values()).map(t => {
       t.messages.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       t.lastMessage = t.messages[t.messages.length - 1];
       return t;
     });
 
-    // Sort threads list by newest message time
     this.chatThreads.sort((a, b) => {
       const timeA = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : 0;
       const timeB = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : 0;
       return timeB - timeA;
     });
 
-    // Refresh active conversation if one is selected
     if (this.selectedContact) {
-      const activeThread = this.chatThreads.find(t => t.contact.id === this.selectedContact?.id);
+      const targetId = String(this.selectedContact.id).toLowerCase();
+      const activeThread = this.chatThreads.find(t => String(t.contact.id).toLowerCase() === targetId);
       if (activeThread) {
         this.activeConversationMessages = activeThread.messages;
       }
@@ -212,19 +379,21 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
     if (!norm) return;
 
     this.selectedContact = norm;
-    let thread = this.chatThreads.find(t => t.contact.id === norm.id);
+    const targetId = String(norm.id).toLowerCase();
+    let thread = this.chatThreads.find(t => String(t.contact.id).toLowerCase() === targetId);
 
     if (thread) {
       this.activeConversationMessages = thread.messages;
 
-      // Mark unread messages as read
-      const currentUserId = this.currentUser?.id || this.currentUser?.ID;
+      const currentUserId = String(this.currentUser?.id || this.currentUser?.ID || '').toLowerCase();
       for (const msg of thread.messages) {
-        if (!msg.is_read && msg.recipient_id === currentUserId) {
+        const recipientId = String(msg.recipient_id || '').toLowerCase();
+        if (!msg.is_read && recipientId === currentUserId) {
           this.api.getMessageDetail(msg.id).subscribe({
             next: () => {
               msg.is_read = true;
               if (thread && thread.unreadCount > 0) thread.unreadCount--;
+              this.refreshUnreadCount();
             }
           });
         }
@@ -236,23 +405,42 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
     this.shouldScrollToBottom = true;
   }
 
+  // ── Recipient Search Improvements ──────────────────────────────────────────
+
   onSearchInput() {
     this.searchError = null;
     const q = this.searchQuery.trim();
-    if (q.length < 1) {
+    this.messageFilterQuery = q;
+    this.messageSearchSubject.next(q);
+
+    if (!q) {
       this.searchResults = [];
+      this.isSearching = false;
       return;
     }
 
     this.isSearching = true;
-    this.api.searchUsers(q).subscribe({
+    this.recipientSearchSubject.next(q);
+  }
+
+  executeRecipientSearch(query: string) {
+    const cached = this.searchCache.get(query.toLowerCase());
+    if (cached) {
+      const currentUserId = this.currentUser?.id || this.currentUser?.ID;
+      this.searchResults = cached.filter(u => (u.id || u.ID) !== currentUserId);
+      this.isSearching = false;
+      this.checkSearchEmptyState(query);
+      return;
+    }
+
+    this.api.searchUsers(query).subscribe({
       next: (results) => {
         const currentUserId = this.currentUser?.id || this.currentUser?.ID;
-        this.searchResults = (results || []).filter(u => (u.id || u.ID) !== currentUserId);
+        const filtered = (results || []).filter(u => (u.id || u.ID) !== currentUserId);
+        this.searchCache.set(query.toLowerCase(), filtered);
+        this.searchResults = filtered;
         this.isSearching = false;
-        if (this.searchResults.length === 0 && q.includes('@')) {
-          this.searchExactEmail();
-        }
+        this.checkSearchEmptyState(query);
       },
       error: (err) => {
         console.error('User search error:', err);
@@ -262,9 +450,33 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
     });
   }
 
+  checkSearchEmptyState(query: string) {
+    if (this.searchResults.length === 0) {
+      if (query.length >= 3 && query.length <= 4 && !query.includes('@')) {
+        this.searchError = 'No user found — try full email address.';
+      } else if (query.includes('@')) {
+        if (this.isValidEmail(query)) {
+          this.searchExactEmail();
+        } else {
+          this.searchError = 'Please enter a valid email address.';
+        }
+      }
+    }
+  }
+
+  isValidEmail(email: string): boolean {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  }
+
   searchExactEmail() {
     const email = this.searchQuery.trim();
     if (!email) return;
+
+    if (!this.isValidEmail(email)) {
+      this.searchError = 'Please enter a valid email address (e.g. user@domain.com).';
+      return;
+    }
 
     this.isSearching = true;
     this.searchError = null;
@@ -317,35 +529,120 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
     this.searchResults = [];
     this.searchError = null;
     this.activeTab = 'chats';
+    this.activeSection = 'chats';
     this.selectContact(norm);
   }
 
+  // ── Draft Auto-Save Logic ──────────────────────────────────────────────────
+
+  onInputChange() {
+    this.validationError = null;
+    this.autoSaveDraftSubject.next();
+  }
+
+  performAutoSaveDraft() {
+    if (!this.chatInput.trim() && !this.chatSubject.trim()) return;
+
+    const draftData: any = {
+      subject: this.chatSubject.trim(),
+      body: this.chatInput.trim()
+    };
+    if (this.currentDraftId) {
+      draftData.id = this.currentDraftId;
+    }
+    if (this.selectedContact?.id) {
+      draftData.recipient_id = this.selectedContact.id;
+    }
+
+    this.api.saveMessageDraft(draftData).subscribe({
+      next: (draft) => {
+        if (draft && draft.id) {
+          this.currentDraftId = draft.id;
+          this.loadDrafts();
+        }
+      }
+    });
+  }
+
+  continueEditingDraft(draft: any) {
+    this.currentDraftId = draft.id;
+    this.chatSubject = draft.subject || '';
+    this.chatInput = draft.body || '';
+    if (draft.subject) {
+      this.showSubjectInput = true;
+    }
+    if (draft.recipient_id) {
+      const contact = {
+        id: draft.recipient_id,
+        name: draft.recipient_name || 'User',
+        email: draft.recipient_email || '',
+        role: draft.recipient_role || 'Member'
+      };
+      this.startChatWithUser(contact);
+    }
+    this.activeSection = 'chats';
+  }
+
+  deleteDraftItem(draftId: string, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    this.api.deleteMessageDraft(draftId).subscribe({
+      next: () => {
+        if (this.currentDraftId === draftId) {
+          this.currentDraftId = null;
+          this.chatInput = '';
+          this.chatSubject = '';
+        }
+        this.loadDrafts();
+        this.showToast('Draft deleted.', 'success');
+      }
+    });
+  }
+
+  // ── Message Actions (Send, Read/Unread, Soft Delete, Restore) ─────────────
+
   sendMessage() {
+    this.validationError = null;
+
     if (!this.selectedContact) {
-      this.showToast('Please select a contact to message.', 'error');
+      this.validationError = 'Please select a recipient to message.';
+      this.showToast('Please select a recipient to message.', 'error');
       return;
     }
 
     const recipientId = this.selectedContact.id;
+    const currentUserId = this.currentUser?.id || this.currentUser?.ID;
+
     if (!recipientId) {
+      this.validationError = 'Invalid recipient selected.';
       this.showToast('Invalid recipient selected.', 'error');
       return;
     }
 
-    if (!this.chatInput.trim()) return;
+    if (recipientId === currentUserId) {
+      this.validationError = 'You cannot send a message to yourself.';
+      this.showToast('You cannot send a message to yourself.', 'error');
+      return;
+    }
+
+    if (!this.chatInput.trim()) {
+      this.validationError = 'Message body cannot be empty.';
+      this.showToast('Please enter a message body before sending.', 'error');
+      return;
+    }
 
     const body = this.chatInput.trim();
     const subject = this.chatSubject.trim() || 'Chat Message';
 
     this.isSending = true;
-    this.api.sendMessage(recipientId, subject, body).subscribe({
+    this.api.sendMessage(recipientId, subject, body, this.currentDraftId || undefined).subscribe({
       next: (res) => {
         this.isSending = false;
         this.chatInput = '';
         this.chatSubject = '';
         this.showSubjectInput = false;
+        this.currentDraftId = null;
+        this.validationError = null;
 
-        // Find existing thread or create one
         let thread = this.chatThreads.find(t => t.contact.id === recipientId);
         if (!thread) {
           thread = {
@@ -357,35 +654,73 @@ export class MessagesComponent implements OnInit, AfterViewChecked {
           this.chatThreads.unshift(thread);
         }
 
-        // Push message to thread messages and update last message
         thread.messages.push(res);
         thread.lastMessage = res;
-
-        // Keep activeConversationMessages in sync
         this.activeConversationMessages = thread.messages;
 
-        // Re-sort thread list by latest message time
         this.chatThreads.sort((a, b) => {
           const timeA = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : 0;
           const timeB = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : 0;
           return timeB - timeA;
         });
 
+        this.loadDrafts();
         this.shouldScrollToBottom = true;
+        this.showToast('Message sent successfully.', 'success');
       },
       error: (err) => {
         this.isSending = false;
-        this.showToast(err.error?.error || 'Failed to send message.', 'error');
+        const errorMsg = err.error?.error || 'Message failed to send. Please try again.';
+        this.validationError = errorMsg;
+        this.showToast(errorMsg, 'error');
+      }
+    });
+  }
+
+  toggleRead(msg: any, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    const newStatus = !msg.is_read;
+    this.api.toggleReadStatus(msg.id, newStatus).subscribe({
+      next: () => {
+        msg.is_read = newStatus;
+        this.refreshUnreadCount();
+        this.showToast(newStatus ? 'Marked as read.' : 'Marked as unread.', 'success');
+      },
+      error: () => {
+        this.showToast('Failed to update read status.', 'error');
+      }
+    });
+  }
+
+  deleteMessage(msg: any, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    this.api.softDeleteMessage(msg.id).subscribe({
+      next: () => {
+        this.activeConversationMessages = this.activeConversationMessages.filter(m => m.id !== msg.id);
+        this.loadData();
+        this.showToast('Message moved to Trash.', 'success');
+      },
+      error: () => {
+        this.showToast('Failed to delete message.', 'error');
+      }
+    });
+  }
+
+  restoreMessage(msg: any, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    this.api.restoreMessage(msg.id).subscribe({
+      next: () => {
+        this.loadData();
+        this.showToast('Message restored from Trash.', 'success');
+      },
+      error: () => {
+        this.showToast('Failed to restore message.', 'error');
       }
     });
   }
 
   toggleSubjectInput() {
     this.showSubjectInput = !this.showSubjectInput;
-  }
-
-  get totalUnreadCount(): number {
-    return this.chatThreads.reduce((sum, t) => sum + t.unreadCount, 0);
   }
 
   private scrollToBottom(): void {
